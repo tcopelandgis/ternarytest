@@ -1,0 +1,1856 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Folk Sediment Diagram</title>
+
+<style>
+  :root {
+    --ink:#1f2c31;
+    --muted:#5a6a70;
+    --panel:#f8faf9;
+    --accent:#2a6b65;
+    --warn:#b4532a;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    background: var(--panel);
+    color: var(--ink);
+    font: 14px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
+
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 12px 14px 18px;
+  }
+
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+  }
+
+  h1 {
+    font-size: 17px;
+    margin: 0;
+  }
+
+  #where {
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 14px;
+    margin-top: 10px;
+    align-items: start;
+  }
+
+  @media (max-width: 760px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .tabs button {
+    flex: 1;
+    font: inherit;
+    font-weight: 600;
+    padding: 6px 8px;
+    border: 1px solid var(--accent);
+    background: #fff;
+    color: var(--accent);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .tabs button.on {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  button:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--warn);
+    outline-offset: 2px;
+  }
+
+  #count {
+    color: #44545a;
+    font-size: 13px;
+    min-height: 1.4em;
+  }
+
+  #count.err {
+    color: var(--warn);
+  }
+
+  svg#tern {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .region {
+    fill-opacity: .45;
+    stroke: none;
+  }
+
+  .edge {
+    fill: none;
+    stroke: #2f4148;
+    stroke-width: 1.6;
+  }
+
+  .bnd {
+    stroke: #2f4148;
+    stroke-width: 1;
+    opacity: .75;
+  }
+
+  .cls {
+    fill: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+    paint-order: stroke;
+    stroke: rgba(255,255,255,.85);
+    stroke-width: 3px;
+  }
+
+  .cls.sm {
+    font-size: 10.5px;
+  }
+
+  .tick {
+    fill: #6a787d;
+    font-size: 11px;
+  }
+
+  .corner {
+    fill: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .pt {
+    stroke: rgba(0,0,0,.75);
+    stroke-width: .8;
+    cursor: pointer;
+  }
+
+  .pt.sel {
+    stroke: #000;
+    stroke-width: 2.4;
+  }
+
+  .side > * + * {
+    margin-top: 12px;
+  }
+
+  .box {
+    background: #fff;
+    border: 1px solid #d6dedc;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .box h2 {
+    font-size: 13px;
+    margin: 0 0 6px;
+  }
+
+  label.row {
+    display: block;
+    font-size: 13px;
+    margin: 6px 0;
+  }
+
+  #info {
+    font-size: 13px;
+    min-height: 5em;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+  <div class="top">
+    <h1>Folk classification of usSEABED samples</h1>
+    <span id="where"></span>
+  </div>
+
+  <div class="grid">
+
+    <div>
+
+      <div class="tabs">
+        <button id="tGSM" class="on" type="button">
+          Gravel – sand – mud
+        </button>
+
+        <button id="tSSC" type="button">
+          Sand – silt – clay
+        </button>
+      </div>
+
+      <div id="count" role="status">
+        Loading samples…
+      </div>
+
+      <svg
+        id="tern"
+        viewBox="0 0 600 530"
+        role="img"
+        aria-label="Folk ternary diagram">
+      </svg>
+
+    </div>
+
+    <div class="side">
+
+      <div class="box" id="info">
+        Hover over a point for its details.
+      </div>
+
+      <div class="box">
+
+        <h2>Display</h2>
+
+        <label class="row">
+          <input type="checkbox" id="onlyBad">
+          Only samples whose code disagrees with their percentages
+        </label>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+(function () {
+
+  "use strict";
+
+
+  /* =========================================================
+     SETTINGS
+     ========================================================= */
+
+  const LAYER_URL =
+    "https://services5.arcgis.com/7weheFjxuNkGGiZi/ArcGIS/rest/services/usSEABED_Integrated_Sea-Floor-Characterization_Database_view/FeatureServer/4";
+
+  const FIELDS =
+    "OBJECTID,DataSetKey,Gravel,Sand,Mud,Clay,FolkCde,LocnName,WaterDepth,DataTypes,ObsvnDate";
+
+  const PAGE = 2000;
+  const MAX_FETCH = 20000;
+
+
+  /* =========================================================
+     READ DataSetKey FROM URL
+
+     Expected:
+
+     ?DataSetKey=1234
+
+     Also accepts lowercase:
+
+     ?datasetkey=1234
+     ========================================================= */
+
+  const params =
+    new URLSearchParams(window.location.search);
+
+
+  const dataSetKeyText =
+    params.get("DataSetKey") ||
+    params.get("datasetkey");
+
+
+  const dataSetKey =
+    dataSetKeyText !== null
+      ? Number(dataSetKeyText)
+      : null;
+
+
+  const validDataSetKey =
+    Number.isInteger(dataSetKey) &&
+    dataSetKey >= 0;
+
+
+  console.log(
+    "DataSetKey URL value:",
+    dataSetKeyText
+  );
+
+
+  console.log(
+    "Parsed DataSetKey:",
+    dataSetKey
+  );
+
+
+  /* =========================================================
+     DATA TABLES
+     ========================================================= */
+
+  const COLORS = {
+    "G":"#FBF7EE",
+    "mG":"#B5D0EB",
+    "msG":"#EEDCB0",
+    "sG":"#FBE4B4",
+    "gM":"#74ACE5",
+    "gmS":"#E2C374",
+    "gS":"#FAD27B",
+    "(g)M":"#4D87D0",
+    "(g)sM":"#51A0E5",
+    "(g)mS":"#DCB754",
+    "(g)S":"#FAC95A",
+    "M":"#1565C0",
+    "sM":"#0388E0",
+    "mS":"#D4A600",
+    "S":"#FFC107",
+    "gsM":"#75B5EA",
+    "(s)gM":"#6F9FD9",
+    "cS":"#FF8A00",
+    "zS":"#E7BD00",
+    "sC":"#F54CCA",
+    "sZ":"#B5BD00",
+    "C":"#C400E8",
+    "Z":"#7BC950",
+    "cZ":"#E28C00",
+    "zC":"#DA4DE4",
+    "czS":"#FF9D00",
+    "scZ":"#F58C00",
+    "szC":"#FF53A8"
+  };
+
+
+  const NAMES = {
+    "S":"Sand",
+    "mS":"Muddy sand",
+    "sM":"Sandy mud",
+    "M":"Mud",
+    "(g)S":"Slightly gravelly sand",
+    "(g)mS":"Slightly gravelly muddy sand",
+    "(g)sM":"Slightly gravelly sandy mud",
+    "(g)M":"Slightly gravelly mud",
+    "gS":"Gravelly sand",
+    "gmS":"Gravelly muddy sand",
+    "gM":"Gravelly mud",
+    "sG":"Sandy gravel",
+    "msG":"Muddy sandy gravel",
+    "mG":"Muddy gravel",
+    "G":"Gravel",
+    "zS":"Silty sand",
+    "cS":"Clayey sand",
+    "sZ":"Sandy silt",
+    "sC":"Sandy clay",
+    "Z":"Silt",
+    "C":"Clay",
+    "cZ":"Clayey silt",
+    "zC":"Silty clay",
+    "czS":"Clayey silty sand",
+    "scZ":"Sandy clayey silt",
+    "szC":"Sandy silty clay",
+    "gsM":"Gravelly sandy mud",
+    "(s)gM":"Slightly sandy gravelly mud"
+  };
+
+
+  const EXTENDED =
+    new Set([
+      "cZ",
+      "zC",
+      "czS",
+      "scZ",
+      "szC",
+      "gsM",
+      "(s)gM"
+    ]);
+
+
+  const SRC = {
+    E: "extracted from lab analyses",
+    P: "parsed from a written description",
+    C: "calculated by dbSEABED"
+  };
+
+
+  /* =========================================================
+     STATE
+     ========================================================= */
+
+  let mode =
+    params.get("mode") === "ssc"
+      ? "ssc"
+      : "gsm";
+
+
+  let samples = [];
+  let total = 0;
+  let selected = null;
+  let loading = true;
+
+
+  const colorBy =
+    params.get("colorBy") === "computed"
+      ? "computed"
+      : "stored";
+
+
+  document
+    .getElementById("onlyBad")
+    .checked =
+      params.get("onlyBad") === "1";
+
+
+  const svg =
+    document.getElementById("tern");
+
+
+  const infoEl =
+    document.getElementById("info");
+
+
+  const countEl =
+    document.getElementById("count");
+
+
+  const whereEl =
+    document.getElementById("where");
+
+
+  if (validDataSetKey) {
+
+    whereEl.textContent =
+      "DataSetKey: " +
+      dataSetKey;
+  }
+
+
+  /* =========================================================
+     FOLK GEOMETRY
+     ========================================================= */
+
+  const NS =
+    "http://www.w3.org/2000/svg";
+
+
+  const T = [300, 40];
+  const BL = [50, 473];
+  const BR = [550, 473];
+
+
+  const xy = (t, l, r) => [
+    t * T[0] +
+    l * BL[0] +
+    r * BR[0],
+
+    t * T[1] +
+    l * BL[1] +
+    r * BR[1]
+  ];
+
+
+  const onRay = (a, r) =>
+    xy(
+      a,
+      (1 - a) * (1 - r),
+      (1 - a) * r
+    );
+
+
+  const f2 = p =>
+    p
+      .map(v => v.toFixed(2))
+      .join(",");
+
+
+  function el(
+    name,
+    attrs,
+    parent,
+    text
+  ) {
+
+    const e =
+      document.createElementNS(
+        NS,
+        name
+      );
+
+
+    for (const k in attrs) {
+
+      e.setAttribute(
+        k,
+        attrs[k]
+      );
+    }
+
+
+    if (text != null) {
+      e.textContent = text;
+    }
+
+
+    if (parent) {
+      parent.appendChild(e);
+    }
+
+
+    return e;
+  }
+
+
+  const GSM = {
+
+    corners: [
+      "Gravel",
+      "Mud",
+      "Sand"
+    ],
+
+    hlines: [
+      [.05, "5%"],
+      [.30, "30%"],
+      [.80, "80%"]
+    ],
+
+    rays: [
+      [.1, .05, "1:9"],
+      [.5, .80, "1:1"],
+      [.9, .80, "9:1"]
+    ],
+
+    labels: [
+      ["G", .9, .5],
+      ["mG", .55, .25],
+      ["msG", .55, .7],
+      ["sG", .55, .95, 1],
+      ["gM", .17, .25],
+      ["gmS", .17, .7],
+      ["gS", .165, .955, 1]
+    ],
+
+    base: [
+      ["(g)M", .05],
+      ["(g)sM", .3],
+      ["(g)mS", .7],
+      ["(g)S", .95]
+    ],
+
+    regions: [
+      ["G",.8,1,0,1],
+      ["mG",.3,.8,0,.5],
+      ["msG",.3,.8,.5,.9],
+      ["sG",.3,.8,.9,1],
+      ["gM",.05,.3,0,.5],
+      ["gmS",.05,.3,.5,.9],
+      ["gS",.05,.3,.9,1],
+      ["(g)M",0,.05,0,.1],
+      ["(g)sM",0,.05,.1,.5],
+      ["(g)mS",0,.05,.5,.9],
+      ["(g)S",0,.05,.9,1]
+    ]
+  };
+
+
+  const SSC = {
+
+    corners: [
+      "Sand",
+      "Clay",
+      "Silt"
+    ],
+
+    hlines: [
+      [.10, "10%"],
+      [.50, "50%"],
+      [.90, "90%"]
+    ],
+
+    rays: [
+      [1/3, .90, "1:2"],
+      [2/3, .90, "2:1"]
+    ],
+
+    labels: [
+      ["S", .95, .5],
+      ["cS", .7, 1/6],
+      ["mS", .7, .5],
+      ["zS", .7, 5/6],
+      ["sC", .3, 1/6],
+      ["sM", .3, .5],
+      ["sZ", .3, 5/6],
+      ["C", .05, 1/6],
+      ["M", .05, .5],
+      ["Z", .05, 5/6]
+    ],
+
+    base: [],
+
+    regions: [
+      ["S",.9,1,0,1],
+      ["cS",.5,.9,0,1/3],
+      ["mS",.5,.9,1/3,2/3],
+      ["zS",.5,.9,2/3,1],
+      ["sC",.1,.5,0,1/3],
+      ["sM",.1,.5,1/3,2/3],
+      ["sZ",.1,.5,2/3,1],
+      ["C",0,.1,0,1/3],
+      ["M",0,.1,1/3,2/3],
+      ["Z",0,.1,2/3,1]
+    ]
+  };
+
+
+  /* =========================================================
+     CLASSIFICATION
+     ========================================================= */
+
+  function classify(g, s, m) {
+
+    const t =
+      g + s + m;
+
+
+    if (t <= 0) {
+      return null;
+    }
+
+
+    g = g / t * 100;
+    s = s / t * 100;
+    m = m / t * 100;
+
+
+    const r =
+      (s + m) > 0
+        ? s / (s + m)
+        : .5;
+
+
+    if (g >= 80) {
+      return "G";
+    }
+
+
+    if (g >= 30) {
+
+      return r < .5
+        ? "mG"
+        : r < .9
+          ? "msG"
+          : "sG";
+    }
+
+
+    if (g >= 5) {
+
+      return r < .5
+        ? "gM"
+        : r < .9
+          ? "gmS"
+          : "gS";
+    }
+
+
+    const base =
+      r < .1
+        ? "M"
+        : r < .5
+          ? "sM"
+          : r < .9
+            ? "mS"
+            : "S";
+
+
+    return (
+      (g > 0 ? "(g)" : "") +
+      base
+    );
+  }
+
+
+  function whyDifferent(p) {
+
+    if (
+      !p.code ||
+      p.code === p.expected
+    ) {
+      return null;
+    }
+
+
+    if (EXTENDED.has(p.code)) {
+
+      return (
+        "usSEABED extended code with no published triangle region."
+      );
+    }
+
+
+    const strip = c =>
+      (c || "")
+        .replace(
+          "(g)",
+          ""
+        );
+
+
+    if (
+      p.g === 0 &&
+      p.code.startsWith("(g)") &&
+      strip(p.code) === p.expected
+    ) {
+
+      return (
+        "Trace gravel: gravel is stored as whole numbers, " +
+        "so a trace amount shows as 0 and the sample sits " +
+        "on the bottom edge."
+      );
+    }
+
+
+    for (
+      const dg of [-1,0,1]
+    ) {
+
+      for (
+        const ds of [-1,0,1]
+      ) {
+
+        for (
+          const dm of [-1,0,1]
+        ) {
+
+          const g =
+            p.g + dg;
+
+          const s =
+            p.s + ds;
+
+          const m =
+            p.m + dm;
+
+
+          if (
+            g >= 0 &&
+            s >= 0 &&
+            m >= 0 &&
+            classify(
+              g,
+              s,
+              m
+            ) === p.code
+          ) {
+
+            return (
+              "Within 1% of a class boundary: whole-number " +
+              "rounding moves it across the line."
+            );
+          }
+        }
+      }
+    }
+
+
+    return (
+      "The Folk code was " +
+      (
+        SRC[(p.dataTypes || "")[8]] ||
+        "assigned separately"
+      ) +
+      " rather than from these percentages."
+    );
+  }
+
+
+  function position(p) {
+
+    if (mode === "gsm") {
+
+      const total =
+        p.g +
+        p.s +
+        p.m;
+
+
+      return total > 0
+        ? xy(
+            p.g / total,
+            p.m / total,
+            p.s / total
+          )
+        : null;
+    }
+
+
+    if (
+      p.c == null ||
+      p.c > p.m
+    ) {
+      return null;
+    }
+
+
+    const total =
+      p.s +
+      p.m;
+
+
+    return total > 0
+      ? xy(
+          p.s / total,
+          p.c / total,
+          (p.m - p.c) / total
+        )
+      : null;
+  }
+
+
+  const yearOf = value => {
+
+    if (
+      value == null ||
+      value <= 0
+    ) {
+      return null;
+    }
+
+
+    const text =
+      String(
+        Math.trunc(value)
+      );
+
+
+    return text.length >= 4
+      ? +text.slice(0,4)
+      : null;
+  };
+
+
+  const isNum = value =>
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0;
+
+
+  const fmt = value =>
+    value.toLocaleString();
+
+
+  const esc = value =>
+    String(value).replace(
+      /[&<>"]/g,
+      character => ({
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        '"':"&quot;"
+      }[character])
+    );
+
+
+  /* =========================================================
+     DRAWING
+     ========================================================= */
+
+  function drawFrame(d) {
+
+    svg.innerHTML = "";
+
+
+    d.regions.forEach(
+      ([code,a1,a2,r1,r2]) => {
+
+        const poly =
+          el(
+            "polygon",
+
+            {
+              points: [
+                onRay(a1,r1),
+                onRay(a1,r2),
+                onRay(a2,r2),
+                onRay(a2,r1)
+              ]
+                .map(f2)
+                .join(" "),
+
+              class:
+                "region",
+
+              fill:
+                COLORS[code] ||
+                "#9aa3a6"
+            },
+
+            svg
+          );
+
+
+        el(
+          "title",
+          {},
+          poly,
+          `${NAMES[code] || code} (${code})`
+        );
+      }
+    );
+
+
+    d.hlines.forEach(
+      ([a,label]) => {
+
+        const p =
+          xy(
+            a,
+            1-a,
+            0
+          );
+
+
+        const q =
+          xy(
+            a,
+            0,
+            1-a
+          );
+
+
+        el(
+          "line",
+
+          {
+            x1:p[0],
+            y1:p[1],
+            x2:q[0],
+            y2:q[1],
+            class:"bnd"
+          },
+
+          svg
+        );
+
+
+        el(
+          "text",
+
+          {
+            x:p[0]-8,
+            y:p[1]+4,
+            class:"tick",
+            "text-anchor":"end"
+          },
+
+          svg,
+
+          label
+        );
+      }
+    );
+
+
+    d.rays.forEach(
+      ([r,amax,label]) => {
+
+        const start =
+          xy(
+            0,
+            1-r,
+            r
+          );
+
+
+        const end =
+          onRay(
+            amax,
+            r
+          );
+
+
+        el(
+          "line",
+
+          {
+            x1:start[0],
+            y1:start[1],
+            x2:end[0],
+            y2:end[1],
+            class:"bnd"
+          },
+
+          svg
+        );
+
+
+        el(
+          "text",
+
+          {
+            x:start[0],
+            y:start[1]+16,
+            class:"tick",
+            "text-anchor":"middle"
+          },
+
+          svg,
+
+          label
+        );
+      }
+    );
+
+
+    el(
+      "polygon",
+
+      {
+        points:
+          [T,BL,BR]
+            .map(f2)
+            .join(" "),
+
+        class:"edge"
+      },
+
+      svg
+    );
+
+
+    el(
+      "text",
+      {
+        x:T[0],
+        y:T[1]-12,
+        class:"corner",
+        "text-anchor":"middle"
+      },
+      svg,
+      d.corners[0]
+    );
+
+
+    el(
+      "text",
+      {
+        x:BL[0],
+        y:BL[1]+34,
+        class:"corner",
+        "text-anchor":"middle"
+      },
+      svg,
+      d.corners[1]
+    );
+
+
+    el(
+      "text",
+      {
+        x:BR[0],
+        y:BR[1]+34,
+        class:"corner",
+        "text-anchor":"middle"
+      },
+      svg,
+      d.corners[2]
+    );
+
+
+    d.labels.forEach(
+      ([code,a,r,small]) => {
+
+        const point =
+          onRay(
+            a,
+            r
+          );
+
+
+        el(
+          "text",
+
+          {
+            x:point[0],
+            y:point[1],
+
+            class:
+              "cls" +
+              (
+                small
+                  ? " sm"
+                  : ""
+              )
+          },
+
+          svg,
+
+          code
+        );
+      }
+    );
+
+
+    d.base.forEach(
+      ([code,r]) => {
+
+        const point =
+          xy(
+            0,
+            1-r,
+            r
+          );
+
+
+        el(
+          "text",
+
+          {
+            x:point[0],
+            y:point[1]+36,
+            class:"cls sm"
+          },
+
+          svg,
+
+          code
+        );
+      }
+    );
+
+
+    return el(
+      "g",
+      {},
+      svg
+    );
+  }
+
+
+  function describe(
+    p,
+    count
+  ) {
+
+    const source =
+      SRC[
+        (p.dataTypes || "")[8]
+      ];
+
+
+    return (
+      `<b>${esc(p.name || "Sample " + p.objectId)}</b><br>` +
+
+      `DataSetKey ${esc(p.dataSetKey)}<br>` +
+
+      `Folk code ${esc(p.code || "none")}` +
+
+      (
+        NAMES[p.code]
+          ? " – " + esc(NAMES[p.code])
+          : ""
+      ) +
+
+      (
+        source
+          ? " (" + source + ")"
+          : ""
+      ) +
+
+      "<br>" +
+
+      `Collected ${yearOf(p.date) || "(undated)"}` +
+
+      (
+        isNum(p.depth)
+          ? `, water depth ${p.depth} m`
+          : ""
+      ) +
+
+      "<br>" +
+
+      `Gravel ${p.g}%, sand ${p.s}%, mud ${p.m}%` +
+
+      (
+        p.c != null
+          ? `, clay ${p.c}%, silt ${Math.max(0,p.m-p.c)}%`
+          : ""
+      ) +
+
+      "<br>" +
+
+      (
+        p.reason
+
+          ? (
+            `<b>Class from the percentages: ` +
+            `${esc(p.expected)}.</b> ` +
+            `${esc(p.reason)}`
+          )
+
+          : (
+            "Matches the class from its percentages."
+          )
+      ) +
+
+      (
+        count > 1
+
+          ? (
+            `<br><i>${fmt(count)} samples ` +
+            `share these exact values.</i>`
+          )
+
+          : ""
+      )
+    );
+  }
+
+
+  function draw() {
+
+    const group =
+      drawFrame(
+        mode === "gsm"
+          ? GSM
+          : SSC
+      );
+
+
+    const onlyBad =
+      document
+        .getElementById("onlyBad")
+        .checked;
+
+
+    const groups =
+      new Map();
+
+
+    samples.forEach(
+      sample => {
+
+        if (
+          onlyBad &&
+          !sample.reason
+        ) {
+          return;
+        }
+
+
+        const coordinates =
+          position(sample);
+
+
+        if (!coordinates) {
+          return;
+        }
+
+
+        const colorKey =
+          colorBy === "computed"
+            ? sample.expected
+            : sample.code;
+
+
+        const key =
+          (
+            coordinates[0].toFixed(1) +
+            "," +
+            coordinates[1].toFixed(1) +
+            "," +
+            colorKey
+          );
+
+
+        if (
+          !groups.has(key)
+        ) {
+
+          groups.set(
+            key,
+            {
+              coordinates,
+              colorKey,
+              records:[]
+            }
+          );
+        }
+
+
+        groups
+          .get(key)
+          .records
+          .push(sample);
+      }
+    );
+
+
+    let selectedCircle =
+      null;
+
+
+    [
+      ...groups.values()
+    ]
+      .sort(
+        (a,b) =>
+          b.records.length -
+          a.records.length
+      )
+      .forEach(
+        plotGroup => {
+
+          const count =
+            plotGroup.records.length;
+
+
+          const isSelected =
+            plotGroup.records.some(
+              record =>
+                record.objectId === selected
+            );
+
+
+          const circle =
+            el(
+              "circle",
+
+              {
+                cx:
+                  plotGroup
+                    .coordinates[0]
+                    .toFixed(2),
+
+                cy:
+                  plotGroup
+                    .coordinates[1]
+                    .toFixed(2),
+
+                r:
+                  (
+                    Math.min(
+                      15,
+                      3.6 +
+                      1.4 *
+                      Math.sqrt(
+                        count - 1
+                      )
+                    ) +
+                    (
+                      isSelected
+                        ? 2.5
+                        : 0
+                    )
+                  ).toFixed(2),
+
+                fill:
+                  COLORS[
+                    plotGroup.colorKey
+                  ] ||
+                  "#9aa3a6",
+
+                class:
+                  "pt" +
+                  (
+                    isSelected
+                      ? " sel"
+                      : ""
+                  ),
+
+                tabindex:0
+              },
+
+              group
+            );
+
+
+          const show = () => {
+
+            infoEl.innerHTML =
+              describe(
+                plotGroup.records[0],
+                count
+              );
+          };
+
+
+          circle.addEventListener(
+            "mouseenter",
+            show
+          );
+
+
+          circle.addEventListener(
+            "focus",
+            show
+          );
+
+
+          circle.addEventListener(
+            "click",
+            () => {
+
+              selected =
+                plotGroup
+                  .records[0]
+                  .objectId;
+
+
+              show();
+
+              draw();
+            }
+          );
+
+
+          if (isSelected) {
+            selectedCircle =
+              circle;
+          }
+        }
+      );
+
+
+    if (selectedCircle) {
+      group.appendChild(
+        selectedCircle
+      );
+    }
+
+
+    if (loading) {
+      return;
+    }
+
+
+    countEl.textContent =
+      samples.length
+
+        ? (
+          fmt(samples.length) +
+          " samples for DataSetKey " +
+          dataSetKey
+        )
+
+        : (
+          "No samples with grain-size values " +
+          "were found for DataSetKey " +
+          dataSetKey +
+          "."
+        );
+  }
+
+
+  /* =========================================================
+     FEATURE SERVICE QUERY
+
+     Critical change:
+
+     WHERE DataSetKey = selected URL value
+
+     No geometry/extent query is used.
+     ========================================================= */
+
+  function queryUrl(extra) {
+
+    const q =
+      new URLSearchParams(
+        Object.assign(
+          {
+
+            where:
+              "DataSetKey = " +
+              String(dataSetKey),
+
+            f:
+              "json"
+          },
+
+          extra
+        )
+      );
+
+
+    return (
+      LAYER_URL +
+      "/query?" +
+      q.toString()
+    );
+  }
+
+
+  async function getJson(
+    url
+  ) {
+
+    const response =
+      await fetch(url);
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        "HTTP " +
+        response.status
+      );
+    }
+
+
+    const json =
+      await response.json();
+
+
+    if (json.error) {
+
+      throw new Error(
+        json.error.message ||
+        "ArcGIS query error"
+      );
+    }
+
+
+    return json;
+  }
+
+
+  async function load() {
+
+    try {
+
+      countEl
+        .classList
+        .remove("err");
+
+
+      countEl.textContent =
+        "Loading samples…";
+
+
+      const countResponse =
+        await getJson(
+          queryUrl({
+            returnCountOnly:
+              "true"
+          })
+        );
+
+
+      total =
+        countResponse.count ||
+        0;
+
+
+      console.log(
+        "Records matching DataSetKey:",
+        total
+      );
+
+
+      const rows = [];
+
+
+      for (
+        let offset = 0;
+        offset < Math.min(
+          total,
+          MAX_FETCH
+        );
+        offset += PAGE
+      ) {
+
+        countEl.textContent =
+          "Loading samples…";
+
+
+        const response =
+          await getJson(
+            queryUrl({
+
+              outFields:
+                FIELDS,
+
+              returnGeometry:
+                "false",
+
+              orderByFields:
+                "OBJECTID",
+
+              resultOffset:
+                String(offset),
+
+              resultRecordCount:
+                String(PAGE)
+            })
+          );
+
+
+        response.features.forEach(
+          feature => {
+
+            rows.push(
+              feature.attributes
+            );
+          }
+        );
+
+
+        if (
+          !response.exceededTransferLimit &&
+          response.features.length < PAGE
+        ) {
+          break;
+        }
+      }
+
+
+      samples = [];
+
+
+      rows.forEach(
+        attributes => {
+
+          if (
+            isNum(attributes.Gravel) &&
+            isNum(attributes.Sand) &&
+            isNum(attributes.Mud) &&
+            (
+              attributes.Gravel +
+              attributes.Sand +
+              attributes.Mud
+            ) > 0
+          ) {
+
+            const point = {
+
+              objectId:
+                attributes.OBJECTID,
+
+              dataSetKey:
+                attributes.DataSetKey,
+
+              name:
+                attributes.LocnName,
+
+              code:
+                attributes.FolkCde,
+
+              g:
+                attributes.Gravel,
+
+              s:
+                attributes.Sand,
+
+              m:
+                attributes.Mud,
+
+              c:
+                isNum(attributes.Clay)
+                  ? attributes.Clay
+                  : null,
+
+              dataTypes:
+                attributes.DataTypes,
+
+              date:
+                attributes.ObsvnDate,
+
+              depth:
+                attributes.WaterDepth
+            };
+
+
+            point.expected =
+              classify(
+                point.g,
+                point.s,
+                point.m
+              );
+
+
+            point.reason =
+              whyDifferent(
+                point
+              );
+
+
+            samples.push(
+              point
+            );
+          }
+        }
+      );
+
+
+      loading = false;
+
+      draw();
+
+    } catch (error) {
+
+      console.error(
+        "usSEABED query failed:",
+        error
+      );
+
+
+      loading = false;
+
+
+      countEl
+        .classList
+        .add("err");
+
+
+      countEl.textContent =
+        (
+          "The samples could not be loaded " +
+          "for DataSetKey " +
+          dataSetKey +
+          "."
+        );
+
+
+      drawFrame(
+        mode === "gsm"
+          ? GSM
+          : SSC
+      );
+    }
+  }
+
+
+  /* =========================================================
+     CONTROLS
+     ========================================================= */
+
+  function setMode(
+    newMode
+  ) {
+
+    mode =
+      newMode;
+
+
+    document
+      .getElementById("tGSM")
+      .classList
+      .toggle(
+        "on",
+        newMode === "gsm"
+      );
+
+
+    document
+      .getElementById("tSSC")
+      .classList
+      .toggle(
+        "on",
+        newMode === "ssc"
+      );
+
+
+    draw();
+  }
+
+
+  document
+    .getElementById("tGSM")
+    .addEventListener(
+      "click",
+      () =>
+        setMode("gsm")
+    );
+
+
+  document
+    .getElementById("tSSC")
+    .addEventListener(
+      "click",
+      () =>
+        setMode("ssc")
+    );
+
+
+  document
+    .getElementById("onlyBad")
+    .addEventListener(
+      "change",
+      draw
+    );
+
+
+  /* =========================================================
+     INITIALIZE
+     ========================================================= */
+
+  setMode(
+    mode
+  );
+
+
+  if (
+    validDataSetKey
+  ) {
+
+    load();
+
+  } else {
+
+    loading =
+      false;
+
+
+    countEl
+      .classList
+      .add("err");
+
+
+    countEl.textContent =
+      (
+        "Unable to plot: no valid " +
+        "DataSetKey was provided."
+      );
+
+
+    drawFrame(
+      mode === "gsm"
+        ? GSM
+        : SSC
+    );
+  }
+
+})();
+</script>
+
+</body>
+</html>
