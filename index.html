@@ -1,74 +1,268 @@
-<html lang="en"><head>
+<!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>Folk Sediment Diagram</title>
+
 <style>
-  :root { --ink:#1f2c31; --muted:#5a6a70; --line:#cdd6d4; --panel:#f8faf9; --accent:#2a6b65; --warn:#b4532a; }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--panel); color: var(--ink); font: 14px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
-  .wrap { max-width: 1100px; margin: 0 auto; padding: 12px 14px 18px; }
-  .top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
-  h1 { font-size: 17px; margin: 0; }
-  #where { color: var(--muted); font-size: 12.5px; }
-  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; margin-top: 10px; align-items: start; }
-  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
-  .tabs { display: flex; gap: 6px; margin-bottom: 6px; }
-  .tabs button { flex: 1; font: inherit; font-weight: 600; padding: 6px 8px; border: 1px solid var(--accent); background: #fff; color: var(--accent); border-radius: 6px; cursor: pointer; }
-  .tabs button.on { background: var(--accent); color: #fff; }
-  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--warn); outline-offset: 2px; }
-  #count { color: #44545a; font-size: 13px; min-height: 1.4em; }
-  #count.err { color: var(--warn); }
-  svg#tern { width: 100%; height: auto; display: block; }
-  .region { fill-opacity: .45; stroke: none; }
-  .edge { fill: none; stroke: #2f4148; stroke-width: 1.6; }
-  .bnd { stroke: #2f4148; stroke-width: 1; opacity: .75; }
-  .cls { fill: var(--ink); font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; pointer-events: none; paint-order: stroke; stroke: rgba(255,255,255,.85); stroke-width: 3px; }
-  .cls.sm { font-size: 10.5px; }
-  .tick { fill: #6a787d; font-size: 11px; }
-  .corner { fill: var(--ink); font-size: 14px; font-weight: 600; }
-  .pt { stroke: rgba(0,0,0,.75); stroke-width: .8; cursor: pointer; }
-  .pt.sel { stroke: #000; stroke-width: 2.4; }
-  .side > * + * { margin-top: 12px; }
-  .box { background: #fff; border: 1px solid #d6dedc; border-radius: 8px; padding: 10px 12px; }
-  .box h2 { font-size: 13px; margin: 0 0 6px; }
-  label.row { display: block; font-size: 13px; margin: 6px 0; }
-  label.row select { display: block; width: 100%; margin-top: 3px; font: inherit; padding: 4px; }
-  #info { font-size: 13px; min-height: 5em; }
-  code { font-size: 11.5px; background: #eef2f1; padding: 1px 4px; border-radius: 3px; word-break: break-all; }
+  :root {
+    --ink:#1f2c31;
+    --muted:#5a6a70;
+    --line:#cdd6d4;
+    --panel:#f8faf9;
+    --accent:#2a6b65;
+    --warn:#b4532a;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    background: var(--panel);
+    color: var(--ink);
+    font: 14px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
+
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 12px 14px 18px;
+  }
+
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+  }
+
+  h1 {
+    font-size: 17px;
+    margin: 0;
+  }
+
+  #where {
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 14px;
+    margin-top: 10px;
+    align-items: start;
+  }
+
+  @media (max-width: 760px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .tabs button {
+    flex: 1;
+    font: inherit;
+    font-weight: 600;
+    padding: 6px 8px;
+    border: 1px solid var(--accent);
+    background: #fff;
+    color: var(--accent);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .tabs button.on {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  button:focus-visible,
+  select:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--warn);
+    outline-offset: 2px;
+  }
+
+  #count {
+    color: #44545a;
+    font-size: 13px;
+    min-height: 1.4em;
+  }
+
+  #count.err {
+    color: var(--warn);
+  }
+
+  svg#tern {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .region {
+    fill-opacity: .45;
+    stroke: none;
+  }
+
+  .edge {
+    fill: none;
+    stroke: #2f4148;
+    stroke-width: 1.6;
+  }
+
+  .bnd {
+    stroke: #2f4148;
+    stroke-width: 1;
+    opacity: .75;
+  }
+
+  .cls {
+    fill: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+    paint-order: stroke;
+    stroke: rgba(255,255,255,.85);
+    stroke-width: 3px;
+  }
+
+  .cls.sm {
+    font-size: 10.5px;
+  }
+
+  .tick {
+    fill: #6a787d;
+    font-size: 11px;
+  }
+
+  .corner {
+    fill: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .pt {
+    stroke: rgba(0,0,0,.75);
+    stroke-width: .8;
+    cursor: pointer;
+  }
+
+  .pt.sel {
+    stroke: #000;
+    stroke-width: 2.4;
+  }
+
+  .side > * + * {
+    margin-top: 12px;
+  }
+
+  .box {
+    background: #fff;
+    border: 1px solid #d6dedc;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .box h2 {
+    font-size: 13px;
+    margin: 0 0 6px;
+  }
+
+  label.row {
+    display: block;
+    font-size: 13px;
+    margin: 6px 0;
+  }
+
+  #info {
+    font-size: 13px;
+    min-height: 5em;
+  }
 </style>
 </head>
-<body cz-shortcut-listen="true">
+
+<body>
+
 <div class="wrap">
+
   <div class="top">
     <h1>Folk classification of usSEABED samples</h1>
     <span id="where"></span>
   </div>
 
   <div class="grid">
+
     <div>
+
       <div class="tabs">
-        <button id="tGSM" class="on" type="button">Gravel – sand – mud</button>
-        <button id="tSSC" type="button">Sand – silt – clay</button>
+        <button id="tGSM" class="on" type="button">
+          Gravel – sand – mud
+        </button>
+
+        <button id="tSSC" type="button">
+          Sand – silt – clay
+        </button>
       </div>
-      <div id="count" role="status" class="err">Unable to plot: no valid extent was provided.</div>
-      <svg id="tern" viewBox="0 0 600 530" role="img" aria-label="Folk ternary diagram"></svg>
+
+      <div id="count" role="status">
+        Loading samples…
+      </div>
+
+      <svg
+        id="tern"
+        viewBox="0 0 600 530"
+        role="img"
+        aria-label="Folk ternary diagram">
+      </svg>
+
     </div>
 
     <div class="side">
-      <div class="box" id="info">Hover over a point for its details.</div>
-      <div class="box">
-        <h2>Display</h2>
-        <label class="row"><input type="checkbox" id="onlyBad"> Only samples whose code disagrees with their percentages</label>
+
+      <div class="box" id="info">
+        Hover over a point for its details.
       </div>
+
+      <div class="box">
+
+        <h2>Display</h2>
+
+        <label class="row">
+          <input type="checkbox" id="onlyBad">
+          Only samples whose code disagrees with their percentages
+        </label>
+
+      </div>
+
     </div>
+
   </div>
+
 </div>
+
 
 <script>
 (function () {
+
   "use strict";
 
-  /* ================= settings ================= */
+
+  /* =========================================================
+     SETTINGS
+     ========================================================= */
 
   const LAYER_URL =
     "https://services5.arcgis.com/7weheFjxuNkGGiZi/ArcGIS/rest/services/usSEABED_Integrated_Sea-Floor-Characterization_Database_view/FeatureServer/4";
@@ -80,7 +274,9 @@
   const MAX_FETCH = 20000;
 
 
-  /* ================= data tables ================= */
+  /* =========================================================
+     DATA TABLES
+     ========================================================= */
 
   const COLORS = {
     "G":"#FBF7EE",
@@ -113,6 +309,7 @@
     "szC":"#FF53A8"
   };
 
+
   const NAMES = {
     "S":"Sand",
     "mS":"Muddy sand",
@@ -144,6 +341,7 @@
     "(s)gM":"Slightly sandy gravelly mud"
   };
 
+
   const EXTENDED = new Set([
     "cZ",
     "zC",
@@ -154,6 +352,7 @@
     "(s)gM"
   ]);
 
+
   const SRC = {
     E: "extracted from lab analyses",
     P: "parsed from a written description",
@@ -161,9 +360,10 @@
   };
 
 
-  /* ================= read URL parameters =================
+  /* =========================================================
+     URL EXTENT
 
-     Expected extent:
+     Expected:
 
      ?extent=xmin,ymin,xmax,ymax,wkid
 
@@ -177,24 +377,11 @@
      ymin = southern latitude
      xmax = eastern longitude
      ymax = northern latitude
-     wkid = 4326
+     ========================================================= */
 
-     Additional optional parameters:
+  const params =
+    new URLSearchParams(window.location.search);
 
-     &mode=gsm
-     &mode=ssc
-
-     &colorBy=stored
-     &colorBy=computed
-
-     &onlyBad=1
-
-  ======================================================== */
-
-  const params = new URLSearchParams(window.location.search);
-
-
-  /* ================= parse extent ================= */
 
   function parseExtent(text) {
 
@@ -202,21 +389,21 @@
       return null;
     }
 
-    const values = String(text)
-      .split(",")
-      .map(value => Number(value.trim()));
+    const values =
+      String(text)
+        .split(",")
+        .map(v => Number(v.trim()));
+
 
     if (
       values.length < 4 ||
-      values.slice(0, 4).some(value => !Number.isFinite(value))
+      values
+        .slice(0, 4)
+        .some(v => !Number.isFinite(v))
     ) {
       return null;
     }
 
-    let x1 = values[0];
-    let y1 = values[1];
-    let x2 = values[2];
-    let y2 = values[3];
 
     const wkid =
       values.length >= 5 &&
@@ -224,14 +411,22 @@
         ? Math.round(values[4])
         : 4326;
 
-    let xmin = Math.min(x1, x2);
-    let ymin = Math.min(y1, y2);
-    let xmax = Math.max(x1, x2);
-    let ymax = Math.max(y1, y2);
+
+    let xmin =
+      Math.min(values[0], values[2]);
+
+    let ymin =
+      Math.min(values[1], values[3]);
+
+    let xmax =
+      Math.max(values[0], values[2]);
+
+    let ymax =
+      Math.max(values[1], values[3]);
+
 
     /*
-      If the supplied envelope is actually a single point,
-      create a small query envelope around it.
+       Protect against zero-width / zero-height envelopes.
     */
 
     const geographic =
@@ -239,60 +434,83 @@
       wkid === 4269 ||
       wkid === 4267;
 
-    const pad = geographic ? 0.01 : 1000;
+    const pad =
+      geographic
+        ? 0.01
+        : 1000;
+
 
     if (xmin === xmax) {
       xmin -= pad;
       xmax += pad;
     }
 
+
     if (ymin === ymax) {
       ymin -= pad;
       ymax += pad;
     }
 
+
     return {
-      xmin: xmin,
-      ymin: ymin,
-      xmax: xmax,
-      ymax: ymax,
-      wkid: wkid
+      xmin,
+      ymin,
+      xmax,
+      ymax,
+      wkid
     };
   }
 
 
-  /* ================= get extent ================= */
-
-  const extentParameter = params.get("extent");
-
-  const ext = parseExtent(extentParameter);
-
-  console.log("Extent parameter:", extentParameter);
-  console.log("Parsed extent:", ext);
+  const extentParameter =
+    params.get("extent");
 
 
-  /* ================= extent display ================= */
+  const ext =
+    parseExtent(extentParameter);
+
+
+  console.log(
+    "Extent URL value:",
+    extentParameter
+  );
+
+
+  console.log(
+    "Parsed extent:",
+    ext
+  );
+
+
+  /* =========================================================
+     DISPLAY EXTENT
+     ========================================================= */
 
   const fmtC = value =>
     Math.abs(value) >= 1000
       ? Math.round(value).toLocaleString()
       : value.toFixed(3);
 
+
   if (ext) {
 
-    document.getElementById("where").textContent =
-      `Extent: ${fmtC(ext.xmin)}, ${fmtC(ext.ymin)} to ` +
-      `${fmtC(ext.xmax)}, ${fmtC(ext.ymax)}`;
-
+    document
+      .getElementById("where")
+      .textContent =
+        `Extent: ${fmtC(ext.xmin)}, ${fmtC(ext.ymin)} to ` +
+        `${fmtC(ext.xmax)}, ${fmtC(ext.ymax)}`;
   }
 
 
-  /* ================= state ================= */
+  /* =========================================================
+     STATE
+     ========================================================= */
 
   let mode =
     params.get("mode") === "ssc"
       ? "ssc"
       : "gsm";
+
 
   let samples = [];
   let missing = 0;
@@ -300,29 +518,40 @@
   let selected = null;
   let loading = true;
 
+
   const colorByParam =
     params.get("colorBy") === "computed"
       ? "computed"
       : "stored";
 
-  document.getElementById("onlyBad").checked =
-    params.get("onlyBad") === "1";
+
+  document
+    .getElementById("onlyBad")
+    .checked =
+      params.get("onlyBad") === "1";
+
 
   const colors = () => COLORS;
 
 
-  /* ================= Folk geometry ================= */
+  /* =========================================================
+     FOLK GEOMETRY
+     ========================================================= */
 
-  const NS = "http://www.w3.org/2000/svg";
+  const NS =
+    "http://www.w3.org/2000/svg";
+
 
   const T = [300, 40];
   const BL = [50, 473];
   const BR = [550, 473];
 
+
   const xy = (t, l, r) => [
     t * T[0] + l * BL[0] + r * BR[0],
     t * T[1] + l * BL[1] + r * BR[1]
   ];
+
 
   const onRay = (a, r) =>
     xy(
@@ -331,26 +560,39 @@
       (1 - a) * r
     );
 
+
   const f2 = p =>
-    p.map(v => v.toFixed(2)).join(",");
+    p
+      .map(v => v.toFixed(2))
+      .join(",");
 
 
   function el(name, attrs, parent, text) {
 
     const e =
-      document.createElementNS(NS, name);
+      document.createElementNS(
+        NS,
+        name
+      );
+
 
     for (const k in attrs) {
-      e.setAttribute(k, attrs[k]);
+      e.setAttribute(
+        k,
+        attrs[k]
+      );
     }
+
 
     if (text != null) {
       e.textContent = text;
     }
 
+
     if (parent) {
       parent.appendChild(e);
     }
+
 
     return e;
   }
@@ -458,76 +700,103 @@
   };
 
 
-  /* ================= classifications ================= */
+  /* =========================================================
+     CLASSIFICATION
+     ========================================================= */
 
   function classify(g, s, m) {
 
-    const t = g + s + m;
+    const t =
+      g + s + m;
+
 
     if (t <= 0) {
       return null;
     }
 
+
     g = g / t * 100;
     s = s / t * 100;
     m = m / t * 100;
+
 
     const r =
       (s + m) > 0
         ? s / (s + m)
         : .5;
 
-    if (g >= 80) return "G";
+
+    if (g >= 80) {
+      return "G";
+    }
+
 
     if (g >= 30) {
+
       return r < .5
         ? "mG"
         : r < .9
-        ? "msG"
-        : "sG";
+          ? "msG"
+          : "sG";
     }
 
+
     if (g >= 5) {
+
       return r < .5
         ? "gM"
         : r < .9
-        ? "gmS"
-        : "gS";
+          ? "gmS"
+          : "gS";
     }
+
 
     const b =
       r < .1
         ? "M"
         : r < .5
-        ? "sM"
-        : r < .9
-        ? "mS"
-        : "S";
+          ? "sM"
+          : r < .9
+            ? "mS"
+            : "S";
 
-    return (g > 0 ? "(g)" : "") + b;
+
+    return (
+      (g > 0 ? "(g)" : "") +
+      b
+    );
   }
 
 
   function whyDifferent(p) {
 
-    if (!p.code || p.code === p.exp) {
+    if (
+      !p.code ||
+      p.code === p.exp
+    ) {
       return null;
     }
+
 
     if (EXTENDED.has(p.code)) {
       return "usSEABED extended code with no published triangle region.";
     }
 
+
     const strip = c =>
-      (c || "").replace("(g)", "");
+      (c || "")
+        .replace("(g)", "");
+
 
     if (
       p.g === 0 &&
       p.code.startsWith("(g)") &&
       strip(p.code) === p.exp
     ) {
+
       return "Trace gravel: gravel is stored as whole numbers, so a trace amount shows as 0 and the sample sits on the bottom edge.";
     }
+
 
     for (const dg of [-1, 0, 1]) {
 
@@ -539,17 +808,20 @@
           const s = p.s + ds;
           const m = p.m + dm;
 
+
           if (
             g >= 0 &&
             s >= 0 &&
             m >= 0 &&
             classify(g, s, m) === p.code
           ) {
+
             return "Within 1% of a class boundary: whole-number rounding moves it across the line.";
           }
         }
       }
     }
+
 
     return (
       "The Folk code was " +
@@ -576,6 +848,7 @@
         p.s +
         p.m;
 
+
       return t > 0
         ? xy(
             p.g / t,
@@ -585,16 +858,20 @@
         : null;
     }
 
+
     if (
       p.c == null ||
       p.c > p.m
     ) {
+
       return null;
     }
+
 
     const t =
       p.s +
       p.m;
+
 
     return t > 0
       ? xy(
@@ -638,15 +915,17 @@
     String(s).replace(
       /[&<>"]/g,
       c => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;"
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        '"':"&quot;"
       }[c])
     );
 
 
-  /* ================= drawing ================= */
+  /* =========================================================
+     DRAWING
+     ========================================================= */
 
   const svg =
     document.getElementById("tern");
@@ -664,23 +943,33 @@
 
     const c = colors();
 
+
     d.regions.forEach(
       ([code, a1, a2, r1, r2]) => {
 
-        const poly = el(
-          "polygon",
-          {
-            points: [
-              onRay(a1, r1),
-              onRay(a1, r2),
-              onRay(a2, r2),
-              onRay(a2, r1)
-            ].map(f2).join(" "),
-            class: "region",
-            fill: c[code] || "#9aa3a6"
-          },
-          svg
-        );
+        const poly =
+          el(
+            "polygon",
+            {
+              points: [
+                onRay(a1, r1),
+                onRay(a1, r2),
+                onRay(a2, r2),
+                onRay(a2, r1)
+              ]
+                .map(f2)
+                .join(" "),
+
+              class: "region",
+
+              fill:
+                c[code] ||
+                "#9aa3a6"
+            },
+
+            svg
+          );
+
 
         el(
           "title",
@@ -695,8 +984,12 @@
     d.hlines.forEach(
       ([a, lab]) => {
 
-        const p = xy(a, 1 - a, 0);
-        const q = xy(a, 0, 1 - a);
+        const p =
+          xy(a, 1 - a, 0);
+
+        const q =
+          xy(a, 0, 1 - a);
+
 
         el(
           "line",
@@ -709,6 +1002,7 @@
           },
           svg
         );
+
 
         el(
           "text",
@@ -728,8 +1022,12 @@
     d.rays.forEach(
       ([r, amax, lab]) => {
 
-        const b = xy(0, 1 - r, r);
-        const e = onRay(amax, r);
+        const b =
+          xy(0, 1 - r, r);
+
+        const e =
+          onRay(amax, r);
+
 
         el(
           "line",
@@ -742,6 +1040,7 @@
           },
           svg
         );
+
 
         el(
           "text",
@@ -761,10 +1060,13 @@
     el(
       "polygon",
       {
-        points: [T, BL, BR]
-          .map(f2)
-          .join(" "),
-        class: "edge"
+        points:
+          [T, BL, BR]
+            .map(f2)
+            .join(" "),
+
+        class:
+          "edge"
       },
       svg
     );
@@ -815,16 +1117,20 @@
         const p =
           onRay(a, r);
 
+
         el(
           "text",
           {
             x: p[0],
             y: p[1],
+
             class:
               "cls" +
               (small ? " sm" : "")
           },
+
           svg,
+
           code
         );
       }
@@ -837,6 +1143,7 @@
         const b =
           xy(0, 1 - r, r);
 
+
         el(
           "text",
           {
@@ -844,11 +1151,14 @@
             y: b[1] + 36,
             class: "cls sm"
           },
+
           svg,
+
           code
         );
       }
     );
+
 
     return el(
       "g",
@@ -862,6 +1172,7 @@
 
     const src =
       SRC[(p.dt || "")[8]];
+
 
     return (
       `<b>${esc(p.name || "Sample " + p.oid)}</b><br>` +
@@ -919,7 +1230,9 @@
 
   function draw() {
 
-    const c = colors();
+    const c =
+      colors();
+
 
     const g =
       drawFrame(
@@ -928,16 +1241,20 @@
           : SSC
       );
 
+
     const colorBy =
       colorByParam;
+
 
     const onlyBad =
       document
         .getElementById("onlyBad")
         .checked;
 
+
     const groups =
       new Map();
+
 
     samples.forEach(p => {
 
@@ -948,32 +1265,38 @@
         return;
       }
 
+
       const pos =
         position(p);
+
 
       if (!pos) {
         return;
       }
+
 
       const key =
         colorBy === "computed"
           ? p.exp
           : p.code;
 
+
       const k =
         `${pos[0].toFixed(1)},${pos[1].toFixed(1)},${key}`;
+
 
       if (!groups.has(k)) {
 
         groups.set(
           k,
           {
-            pos: pos,
-            key: key,
+            pos,
+            key,
             list: []
           }
         );
       }
+
 
       groups
         .get(k)
@@ -996,40 +1319,49 @@
         const n =
           gr.list.length;
 
+
         const isSel =
           gr.list.some(
             q =>
               q.oid === selected
           );
 
-        const circle = el(
-          "circle",
-          {
-            cx: gr.pos[0].toFixed(2),
-            cy: gr.pos[1].toFixed(2),
 
-            r: (
-              Math.min(
-                15,
-                3.6 +
-                1.4 *
-                Math.sqrt(n - 1)
-              ) +
-              (isSel ? 2.5 : 0)
-            ).toFixed(2),
+        const circle =
+          el(
+            "circle",
 
-            fill:
-              c[gr.key] ||
-              "#9aa3a6",
+            {
+              cx:
+                gr.pos[0].toFixed(2),
 
-            class:
-              "pt" +
-              (isSel ? " sel" : ""),
+              cy:
+                gr.pos[1].toFixed(2),
 
-            tabindex: 0
-          },
-          g
-        );
+              r:
+                (
+                  Math.min(
+                    15,
+                    3.6 +
+                    1.4 *
+                    Math.sqrt(n - 1)
+                  ) +
+                  (isSel ? 2.5 : 0)
+                ).toFixed(2),
+
+              fill:
+                c[gr.key] ||
+                "#9aa3a6",
+
+              class:
+                "pt" +
+                (isSel ? " sel" : ""),
+
+              tabindex: 0
+            },
+
+            g
+          );
 
 
         const show = () => {
@@ -1047,10 +1379,12 @@
           show
         );
 
+
         circle.addEventListener(
           "focus",
           show
         );
+
 
         circle.addEventListener(
           "click",
@@ -1089,7 +1423,9 @@
   }
 
 
-  /* ================= query usSEABED ================= */
+  /* =========================================================
+     ARCGIS FEATURE SERVICE QUERY
+     ========================================================= */
 
   function queryUrl(extra) {
 
@@ -1097,23 +1433,27 @@
       return null;
     }
 
+
     const q =
       new URLSearchParams(
         Object.assign(
           {
-            where: "1=1",
 
-            geometry: [
-              ext.xmin,
-              ext.ymin,
-              ext.xmax,
-              ext.ymax
-            ]
-              .map(
-                v =>
-                  +v.toFixed(8)
-              )
-              .join(","),
+            where:
+              "1=1",
+
+            geometry:
+              [
+                ext.xmin,
+                ext.ymin,
+                ext.xmax,
+                ext.ymax
+              ]
+                .map(
+                  value =>
+                    +value.toFixed(8)
+                )
+                .join(","),
 
             geometryType:
               "esriGeometryEnvelope",
@@ -1132,6 +1472,7 @@
         )
       );
 
+
     return (
       `${LAYER_URL}/query?${q}`
     );
@@ -1140,27 +1481,32 @@
 
   async function getJson(url) {
 
-    const r =
+    const response =
       await fetch(url);
 
-    if (!r.ok) {
+
+    if (!response.ok) {
+
       throw new Error(
-        `HTTP ${r.status}`
+        `HTTP ${response.status}`
       );
     }
 
-    const j =
-      await r.json();
 
-    if (j.error) {
+    const json =
+      await response.json();
+
+
+    if (json.error) {
 
       throw new Error(
-        j.error.message ||
-        "query error"
+        json.error.message ||
+        "ArcGIS query error"
       );
     }
 
-    return j;
+
+    return json;
   }
 
 
@@ -1170,10 +1516,14 @@
 
       loading = false;
 
-      countEl.classList.add("err");
+      countEl
+        .classList
+        .add("err");
+
 
       countEl.textContent =
         "Unable to plot: no valid extent was provided.";
+
 
       drawFrame(
         mode === "gsm"
@@ -1181,47 +1531,56 @@
           : SSC
       );
 
+
       return;
     }
 
 
     try {
 
-      countEl.classList.remove("err");
+      countEl
+        .classList
+        .remove("err");
+
 
       countEl.textContent =
         "Loading samples…";
 
 
-      const cnt =
+      const countResponse =
         await getJson(
           queryUrl({
-            returnCountOnly: "true"
+            returnCountOnly:
+              "true"
           })
         );
 
 
       total =
-        cnt.count || 0;
+        countResponse.count || 0;
+
+
+      console.log(
+        "Features intersecting extent:",
+        total
+      );
 
 
       const rows = [];
 
 
       for (
-        let off = 0;
-        off < Math.min(total, MAX_FETCH);
-        off += PAGE
+        let offset = 0;
+        offset < Math.min(total, MAX_FETCH);
+        offset += PAGE
       ) {
 
-        countEl.textContent =
-          "Loading samples…";
-
-
-        const j =
+        const json =
           await getJson(
             queryUrl({
-              outFields: FIELDS,
+
+              outFields:
+                FIELDS,
 
               returnGeometry:
                 "false",
@@ -1230,7 +1589,7 @@
                 "OBJECTID",
 
               resultOffset:
-                String(off),
+                String(offset),
 
               resultRecordCount:
                 String(PAGE)
@@ -1238,17 +1597,17 @@
           );
 
 
-        j.features.forEach(
-          f =>
+        json.features.forEach(
+          feature =>
             rows.push(
-              f.attributes
+              feature.attributes
             )
         );
 
 
         if (
-          !j.exceededTransferLimit &&
-          j.features.length < PAGE
+          !json.exceededTransferLimit &&
+          json.features.length < PAGE
         ) {
           break;
         }
@@ -1333,16 +1692,25 @@
 
       draw();
 
-    } catch (e) {
+    } catch (error) {
 
-      console.error(e);
+      console.error(
+        "usSEABED query failed:",
+        error
+      );
+
 
       loading = false;
 
-      countEl.classList.add("err");
+
+      countEl
+        .classList
+        .add("err");
+
 
       countEl.textContent =
-        "The samples could not be loaded. Check the internet connection and the extent in the URL.";
+        "The samples could not be loaded. Check the extent parameter and Feature Service request.";
+
 
       drawFrame(
         mode === "gsm"
@@ -1353,11 +1721,14 @@
   }
 
 
-  /* ================= controls ================= */
+  /* =========================================================
+     CONTROLS
+     ========================================================= */
 
   function setMode(m) {
 
     mode = m;
+
 
     document
       .getElementById("tGSM")
@@ -1367,6 +1738,7 @@
         m === "gsm"
       );
 
+
     document
       .getElementById("tSSC")
       .classList
@@ -1374,6 +1746,7 @@
         "on",
         m === "ssc"
       );
+
 
     draw();
   }
@@ -1405,9 +1778,12 @@
     );
 
 
-  /* ================= initialize ================= */
+  /* =========================================================
+     INITIALIZE
+     ========================================================= */
 
   setMode(mode);
+
 
   if (ext) {
 
@@ -1417,10 +1793,15 @@
 
     loading = false;
 
-    countEl.classList.add("err");
+
+    countEl
+      .classList
+      .add("err");
+
 
     countEl.textContent =
       "Unable to plot: no valid extent was provided.";
+
 
     drawFrame(
       mode === "gsm"
@@ -1432,5 +1813,5 @@
 })();
 </script>
 
-
-</body></html>
+</body>
+</html>
