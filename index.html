@@ -67,268 +67,1368 @@
 <script>
 (function () {
   "use strict";
+
   /* ================= settings ================= */
-  const LAYER_URL = "https://services5.arcgis.com/7weheFjxuNkGGiZi/ArcGIS/rest/services/usSEABED_Integrated_Sea-Floor-Characterization_Database_view/FeatureServer/4";
-  const FIELDS = "OBJECTID,Gravel,Sand,Mud,Clay,FolkCde,LocnName,WaterDepth,DataTypes,ObsvnDate";
-  const PAGE = 2000;          // the service returns at most 2000 records per request
-  const MAX_FETCH = 20000;    // safety cap for very large extents
+
+  const LAYER_URL =
+    "https://services5.arcgis.com/7weheFjxuNkGGiZi/ArcGIS/rest/services/usSEABED_Integrated_Sea-Floor-Characterization_Database_view/FeatureServer/4";
+
+  const FIELDS =
+    "OBJECTID,Gravel,Sand,Mud,Clay,FolkCde,LocnName,WaterDepth,DataTypes,ObsvnDate";
+
+  const PAGE = 2000;
+  const MAX_FETCH = 20000;
+
 
   /* ================= data tables ================= */
-  // Fixed colors per Folk code: sand, mud, silt and clay blend; shell-rich (gravel) classes fade toward white.
-  const COLORS = {"G":"#FBF7EE","mG":"#B5D0EB","msG":"#EEDCB0","sG":"#FBE4B4","gM":"#74ACE5","gmS":"#E2C374","gS":"#FAD27B","(g)M":"#4D87D0","(g)sM":"#51A0E5","(g)mS":"#DCB754","(g)S":"#FAC95A","M":"#1565C0","sM":"#0388E0","mS":"#D4A600","S":"#FFC107","gsM":"#75B5EA","(s)gM":"#6F9FD9","cS":"#FF8A00","zS":"#E7BD00","sC":"#F54CCA","sZ":"#B5BD00","C":"#C400E8","Z":"#7BC950","cZ":"#E28C00","zC":"#DA4DE4","czS":"#FF9D00","scZ":"#F58C00","szC":"#FF53A8"};
-  const NAMES = {"S":"Sand","mS":"Muddy sand","sM":"Sandy mud","M":"Mud","(g)S":"Slightly gravelly sand","(g)mS":"Slightly gravelly muddy sand",
-    "(g)sM":"Slightly gravelly sandy mud","(g)M":"Slightly gravelly mud","gS":"Gravelly sand","gmS":"Gravelly muddy sand","gM":"Gravelly mud",
-    "sG":"Sandy gravel","msG":"Muddy sandy gravel","mG":"Muddy gravel","G":"Gravel","zS":"Silty sand","cS":"Clayey sand","sZ":"Sandy silt",
-    "sC":"Sandy clay","Z":"Silt","C":"Clay","cZ":"Clayey silt","zC":"Silty clay","czS":"Clayey silty sand","scZ":"Sandy clayey silt",
-    "szC":"Sandy silty clay","gsM":"Gravelly sandy mud","(s)gM":"Slightly sandy gravelly mud"};
-  const EXTENDED = new Set(["cZ","zC","czS","scZ","szC","gsM","(s)gM"]);
-  const SRC = { E: "extracted from lab analyses", P: "parsed from a written description", C: "calculated by dbSEABED" };
 
-  /* ================= read the URL =================
-     ?extent=xmin,ymin,xmax,ymax[,wkid]   (also accepted after # )
-     optional: &mode=gsm|ssc  &colorBy=stored|computed  &onlyBad=1 */
-  const params = new URLSearchParams(location.search);
-  new URLSearchParams(location.hash.replace(/^#/, "")).forEach((v, k) => { if (!params.has(k)) params.set(k, v); });
+  const COLORS = {
+    "G":"#FBF7EE",
+    "mG":"#B5D0EB",
+    "msG":"#EEDCB0",
+    "sG":"#FBE4B4",
+    "gM":"#74ACE5",
+    "gmS":"#E2C374",
+    "gS":"#FAD27B",
+    "(g)M":"#4D87D0",
+    "(g)sM":"#51A0E5",
+    "(g)mS":"#DCB754",
+    "(g)S":"#FAC95A",
+    "M":"#1565C0",
+    "sM":"#0388E0",
+    "mS":"#D4A600",
+    "S":"#FFC107",
+    "gsM":"#75B5EA",
+    "(s)gM":"#6F9FD9",
+    "cS":"#FF8A00",
+    "zS":"#E7BD00",
+    "sC":"#F54CCA",
+    "sZ":"#B5BD00",
+    "C":"#C400E8",
+    "Z":"#7BC950",
+    "cZ":"#E28C00",
+    "zC":"#DA4DE4",
+    "czS":"#FF9D00",
+    "scZ":"#F58C00",
+    "szC":"#FF53A8"
+  };
 
-  console.log("parameter1:", params.get("parameter1"));
+  const NAMES = {
+    "S":"Sand",
+    "mS":"Muddy sand",
+    "sM":"Sandy mud",
+    "M":"Mud",
+    "(g)S":"Slightly gravelly sand",
+    "(g)mS":"Slightly gravelly muddy sand",
+    "(g)sM":"Slightly gravelly sandy mud",
+    "(g)M":"Slightly gravelly mud",
+    "gS":"Gravelly sand",
+    "gmS":"Gravelly muddy sand",
+    "gM":"Gravelly mud",
+    "sG":"Sandy gravel",
+    "msG":"Muddy sandy gravel",
+    "mG":"Muddy gravel",
+    "G":"Gravel",
+    "zS":"Silty sand",
+    "cS":"Clayey sand",
+    "sZ":"Sandy silt",
+    "sC":"Sandy clay",
+    "Z":"Silt",
+    "C":"Clay",
+    "cZ":"Clayey silt",
+    "zC":"Silty clay",
+    "czS":"Clayey silty sand",
+    "scZ":"Sandy clayey silt",
+    "szC":"Sandy silty clay",
+    "gsM":"Gravelly sandy mud",
+    "(s)gM":"Slightly sandy gravelly mud"
+  };
+
+  const EXTENDED = new Set([
+    "cZ",
+    "zC",
+    "czS",
+    "scZ",
+    "szC",
+    "gsM",
+    "(s)gM"
+  ]);
+
+  const SRC = {
+    E: "extracted from lab analyses",
+    P: "parsed from a written description",
+    C: "calculated by dbSEABED"
+  };
+
+
+  /* ================= read URL parameters =================
+
+     Expected extent:
+
+     ?extent=xmin,ymin,xmax,ymax,wkid
+
+     Example:
+
+     ?extent=-88.4,41.1,-87.2,42.3,4326
+
+     For WKID 4326:
+
+     xmin = western longitude
+     ymin = southern latitude
+     xmax = eastern longitude
+     ymax = northern latitude
+     wkid = 4326
+
+     Additional optional parameters:
+
+     &mode=gsm
+     &mode=ssc
+
+     &colorBy=stored
+     &colorBy=computed
+
+     &onlyBad=1
+
+  ======================================================== */
+
+  const params = new URLSearchParams(window.location.search);
+
+
+  /* ================= parse extent ================= */
 
   function parseExtent(text) {
-    const n = String(text).split(",").map(s => Number(s.trim()));
-    if (n.length < 4 || n.slice(0, 4).some(v => !isFinite(v))) return null;
-    let [x1, y1, x2, y2] = n; const wkid = n.length >= 5 && isFinite(n[4]) ? Math.round(n[4]) : 4326;
-    let xmin = Math.min(x1, x2), xmax = Math.max(x1, x2), ymin = Math.min(y1, y2), ymax = Math.max(y1, y2);
-    const geographic = wkid === 4326 || wkid === 4269 || wkid === 4267;
-    let widened = false;
-    const pad = geographic ? 0.01 : 1000;   // about 1 km, for an extent that is a single point
-    if (xmax - xmin === 0) { xmin -= pad; xmax += pad; widened = true; }
-    if (ymax - ymin === 0) { ymin -= pad; ymax += pad; widened = true; }
-    return { xmin, ymin, xmax, ymax, wkid, widened };
+
+    if (!text) {
+      return null;
+    }
+
+    const values = String(text)
+      .split(",")
+      .map(value => Number(value.trim()));
+
+    if (
+      values.length < 4 ||
+      values.slice(0, 4).some(value => !Number.isFinite(value))
+    ) {
+      return null;
+    }
+
+    let x1 = values[0];
+    let y1 = values[1];
+    let x2 = values[2];
+    let y2 = values[3];
+
+    const wkid =
+      values.length >= 5 &&
+      Number.isFinite(values[4])
+        ? Math.round(values[4])
+        : 4326;
+
+    let xmin = Math.min(x1, x2);
+    let ymin = Math.min(y1, y2);
+    let xmax = Math.max(x1, x2);
+    let ymax = Math.max(y1, y2);
+
+    /*
+      If the supplied envelope is actually a single point,
+      create a small query envelope around it.
+    */
+
+    const geographic =
+      wkid === 4326 ||
+      wkid === 4269 ||
+      wkid === 4267;
+
+    const pad = geographic ? 0.01 : 1000;
+
+    if (xmin === xmax) {
+      xmin -= pad;
+      xmax += pad;
+    }
+
+    if (ymin === ymax) {
+      ymin -= pad;
+      ymax += pad;
+    }
+
+    return {
+      xmin: xmin,
+      ymin: ymin,
+      xmax: xmax,
+      ymax: ymax,
+      wkid: wkid
+    };
   }
 
-  const passed = params.get("extent") || params.get("bbox");
-  const ext = passed ? parseExtent(passed) : null;
 
-  const fmtC = v => Math.abs(v) >= 1000 ? Math.round(v).toLocaleString() : v.toFixed(3);
-  if (ext) document.getElementById("where").textContent = `Extent: ${fmtC(ext.xmin)}, ${fmtC(ext.ymin)} to ${fmtC(ext.xmax)}, ${fmtC(ext.ymax)}`;
+  /* ================= get extent ================= */
+
+  const extentParameter = params.get("extent");
+
+  const ext = parseExtent(extentParameter);
+
+  console.log("Extent parameter:", extentParameter);
+  console.log("Parsed extent:", ext);
+
+
+  /* ================= extent display ================= */
+
+  const fmtC = value =>
+    Math.abs(value) >= 1000
+      ? Math.round(value).toLocaleString()
+      : value.toFixed(3);
+
+  if (ext) {
+
+    document.getElementById("where").textContent =
+      `Extent: ${fmtC(ext.xmin)}, ${fmtC(ext.ymin)} to ` +
+      `${fmtC(ext.xmax)}, ${fmtC(ext.ymax)}`;
+
+  }
+
 
   /* ================= state ================= */
-  let mode = params.get("mode") === "ssc" ? "ssc" : "gsm";
-  let samples = [], missing = 0, total = 0, selected = null, loading = true;
 
-  const colorByParam = params.get("colorBy") === "computed" ? "computed" : "stored";
-  document.getElementById("onlyBad").checked = params.get("onlyBad") === "1";
+  let mode =
+    params.get("mode") === "ssc"
+      ? "ssc"
+      : "gsm";
+
+  let samples = [];
+  let missing = 0;
+  let total = 0;
+  let selected = null;
+  let loading = true;
+
+  const colorByParam =
+    params.get("colorBy") === "computed"
+      ? "computed"
+      : "stored";
+
+  document.getElementById("onlyBad").checked =
+    params.get("onlyBad") === "1";
+
   const colors = () => COLORS;
 
+
   /* ================= Folk geometry ================= */
+
   const NS = "http://www.w3.org/2000/svg";
-  const T = [300, 40], BL = [50, 473], BR = [550, 473];
-  const xy = (t, l, r) => [t*T[0] + l*BL[0] + r*BR[0], t*T[1] + l*BL[1] + r*BR[1]];
-  const onRay = (a, r) => xy(a, (1-a)*(1-r), (1-a)*r);
-  const f2 = p => p.map(v => v.toFixed(2)).join(",");
+
+  const T = [300, 40];
+  const BL = [50, 473];
+  const BR = [550, 473];
+
+  const xy = (t, l, r) => [
+    t * T[0] + l * BL[0] + r * BR[0],
+    t * T[1] + l * BL[1] + r * BR[1]
+  ];
+
+  const onRay = (a, r) =>
+    xy(
+      a,
+      (1 - a) * (1 - r),
+      (1 - a) * r
+    );
+
+  const f2 = p =>
+    p.map(v => v.toFixed(2)).join(",");
+
+
   function el(name, attrs, parent, text) {
-    const e = document.createElementNS(NS, name);
-    for (const k in attrs) e.setAttribute(k, attrs[k]);
-    if (text != null) e.textContent = text;
-    if (parent) parent.appendChild(e);
+
+    const e =
+      document.createElementNS(NS, name);
+
+    for (const k in attrs) {
+      e.setAttribute(k, attrs[k]);
+    }
+
+    if (text != null) {
+      e.textContent = text;
+    }
+
+    if (parent) {
+      parent.appendChild(e);
+    }
+
     return e;
   }
+
+
   const GSM = {
-    corners: ["Gravel", "Mud", "Sand"],
-    hlines: [[.05, "5%"], [.30, "30%"], [.80, "80%"]],
-    rays: [[.1, .05, "1:9"], [.5, .80, "1:1"], [.9, .80, "9:1"]],
-    labels: [["G", .9, .5], ["mG", .55, .25], ["msG", .55, .7], ["sG", .55, .95, 1], ["gM", .17, .25], ["gmS", .17, .7], ["gS", .165, .955, 1]],
-    base: [["(g)M", .05], ["(g)sM", .3], ["(g)mS", .7], ["(g)S", .95]],
-    regions: [["G",.8,1,0,1],["mG",.3,.8,0,.5],["msG",.3,.8,.5,.9],["sG",.3,.8,.9,1],["gM",.05,.3,0,.5],["gmS",.05,.3,.5,.9],["gS",.05,.3,.9,1],
-      ["(g)M",0,.05,0,.1],["(g)sM",0,.05,.1,.5],["(g)mS",0,.05,.5,.9],["(g)S",0,.05,.9,1]]
+
+    corners: [
+      "Gravel",
+      "Mud",
+      "Sand"
+    ],
+
+    hlines: [
+      [.05, "5%"],
+      [.30, "30%"],
+      [.80, "80%"]
+    ],
+
+    rays: [
+      [.1, .05, "1:9"],
+      [.5, .80, "1:1"],
+      [.9, .80, "9:1"]
+    ],
+
+    labels: [
+      ["G", .9, .5],
+      ["mG", .55, .25],
+      ["msG", .55, .7],
+      ["sG", .55, .95, 1],
+      ["gM", .17, .25],
+      ["gmS", .17, .7],
+      ["gS", .165, .955, 1]
+    ],
+
+    base: [
+      ["(g)M", .05],
+      ["(g)sM", .3],
+      ["(g)mS", .7],
+      ["(g)S", .95]
+    ],
+
+    regions: [
+      ["G",.8,1,0,1],
+      ["mG",.3,.8,0,.5],
+      ["msG",.3,.8,.5,.9],
+      ["sG",.3,.8,.9,1],
+      ["gM",.05,.3,0,.5],
+      ["gmS",.05,.3,.5,.9],
+      ["gS",.05,.3,.9,1],
+      ["(g)M",0,.05,0,.1],
+      ["(g)sM",0,.05,.1,.5],
+      ["(g)mS",0,.05,.5,.9],
+      ["(g)S",0,.05,.9,1]
+    ]
   };
+
+
   const SSC = {
-    corners: ["Sand", "Clay", "Silt"],
-    hlines: [[.10, "10%"], [.50, "50%"], [.90, "90%"]],
-    rays: [[1/3, .90, "1:2"], [2/3, .90, "2:1"]],
-    labels: [["S", .95, .5], ["cS", .7, 1/6], ["mS", .7, .5], ["zS", .7, 5/6], ["sC", .3, 1/6], ["sM", .3, .5], ["sZ", .3, 5/6], ["C", .05, 1/6], ["M", .05, .5], ["Z", .05, 5/6]],
+
+    corners: [
+      "Sand",
+      "Clay",
+      "Silt"
+    ],
+
+    hlines: [
+      [.10, "10%"],
+      [.50, "50%"],
+      [.90, "90%"]
+    ],
+
+    rays: [
+      [1/3, .90, "1:2"],
+      [2/3, .90, "2:1"]
+    ],
+
+    labels: [
+      ["S", .95, .5],
+      ["cS", .7, 1/6],
+      ["mS", .7, .5],
+      ["zS", .7, 5/6],
+      ["sC", .3, 1/6],
+      ["sM", .3, .5],
+      ["sZ", .3, 5/6],
+      ["C", .05, 1/6],
+      ["M", .05, .5],
+      ["Z", .05, 5/6]
+    ],
+
     base: [],
-    regions: [["S",.9,1,0,1],["cS",.5,.9,0,1/3],["mS",.5,.9,1/3,2/3],["zS",.5,.9,2/3,1],["sC",.1,.5,0,1/3],["sM",.1,.5,1/3,2/3],["sZ",.1,.5,2/3,1],
-      ["C",0,.1,0,1/3],["M",0,.1,1/3,2/3],["Z",0,.1,2/3,1]]
+
+    regions: [
+      ["S",.9,1,0,1],
+      ["cS",.5,.9,0,1/3],
+      ["mS",.5,.9,1/3,2/3],
+      ["zS",.5,.9,2/3,1],
+      ["sC",.1,.5,0,1/3],
+      ["sM",.1,.5,1/3,2/3],
+      ["sZ",.1,.5,2/3,1],
+      ["C",0,.1,0,1/3],
+      ["M",0,.1,1/3,2/3],
+      ["Z",0,.1,2/3,1]
+    ]
   };
+
+
+  /* ================= classifications ================= */
 
   function classify(g, s, m) {
-    const t = g + s + m; if (t <= 0) return null;
-    g = g/t*100; s = s/t*100; m = m/t*100;
-    const r = (s + m) > 0 ? s/(s + m) : .5;
+
+    const t = g + s + m;
+
+    if (t <= 0) {
+      return null;
+    }
+
+    g = g / t * 100;
+    s = s / t * 100;
+    m = m / t * 100;
+
+    const r =
+      (s + m) > 0
+        ? s / (s + m)
+        : .5;
+
     if (g >= 80) return "G";
-    if (g >= 30) return r < .5 ? "mG" : r < .9 ? "msG" : "sG";
-    if (g >= 5) return r < .5 ? "gM" : r < .9 ? "gmS" : "gS";
-    const b = r < .1 ? "M" : r < .5 ? "sM" : r < .9 ? "mS" : "S";
+
+    if (g >= 30) {
+      return r < .5
+        ? "mG"
+        : r < .9
+        ? "msG"
+        : "sG";
+    }
+
+    if (g >= 5) {
+      return r < .5
+        ? "gM"
+        : r < .9
+        ? "gmS"
+        : "gS";
+    }
+
+    const b =
+      r < .1
+        ? "M"
+        : r < .5
+        ? "sM"
+        : r < .9
+        ? "mS"
+        : "S";
+
     return (g > 0 ? "(g)" : "") + b;
   }
+
+
   function whyDifferent(p) {
-    if (!p.code || p.code === p.exp) return null;
-    if (EXTENDED.has(p.code)) return "usSEABED extended code with no published triangle region.";
-    const strip = c => (c || "").replace("(g)", "");
-    if (p.g === 0 && p.code.startsWith("(g)") && strip(p.code) === p.exp)
-      return "Trace gravel: gravel is stored as whole numbers, so a trace amount shows as 0 and the sample sits on the bottom edge.";
-    for (const dg of [-1, 0, 1]) for (const ds of [-1, 0, 1]) for (const dm of [-1, 0, 1]) {
-      const g = p.g + dg, s = p.s + ds, m = p.m + dm;
-      if (g >= 0 && s >= 0 && m >= 0 && classify(g, s, m) === p.code) return "Within 1% of a class boundary: whole-number rounding moves it across the line.";
+
+    if (!p.code || p.code === p.exp) {
+      return null;
     }
-    return "The Folk code was " + (SRC[(p.dt || "")[8]] || "assigned separately") + " rather than from these percentages" +
-      ((p.dt || "").slice(0, 3) === "EEE" ? " (the percentages are lab values)." : ".");
+
+    if (EXTENDED.has(p.code)) {
+      return "usSEABED extended code with no published triangle region.";
+    }
+
+    const strip = c =>
+      (c || "").replace("(g)", "");
+
+    if (
+      p.g === 0 &&
+      p.code.startsWith("(g)") &&
+      strip(p.code) === p.exp
+    ) {
+      return "Trace gravel: gravel is stored as whole numbers, so a trace amount shows as 0 and the sample sits on the bottom edge.";
+    }
+
+    for (const dg of [-1, 0, 1]) {
+
+      for (const ds of [-1, 0, 1]) {
+
+        for (const dm of [-1, 0, 1]) {
+
+          const g = p.g + dg;
+          const s = p.s + ds;
+          const m = p.m + dm;
+
+          if (
+            g >= 0 &&
+            s >= 0 &&
+            m >= 0 &&
+            classify(g, s, m) === p.code
+          ) {
+            return "Within 1% of a class boundary: whole-number rounding moves it across the line.";
+          }
+        }
+      }
+    }
+
+    return (
+      "The Folk code was " +
+      (
+        SRC[(p.dt || "")[8]] ||
+        "assigned separately"
+      ) +
+      " rather than from these percentages" +
+      (
+        (p.dt || "").slice(0, 3) === "EEE"
+          ? " (the percentages are lab values)."
+          : "."
+      )
+    );
   }
+
+
   function position(p) {
-    if (mode === "gsm") { const t = p.g + p.s + p.m; return t > 0 ? xy(p.g/t, p.m/t, p.s/t) : null; }
-    if (p.c == null || p.c > p.m) return null;
-    const t = p.s + p.m; return t > 0 ? xy(p.s/t, p.c/t, (p.m - p.c)/t) : null;
+
+    if (mode === "gsm") {
+
+      const t =
+        p.g +
+        p.s +
+        p.m;
+
+      return t > 0
+        ? xy(
+            p.g / t,
+            p.m / t,
+            p.s / t
+          )
+        : null;
+    }
+
+    if (
+      p.c == null ||
+      p.c > p.m
+    ) {
+      return null;
+    }
+
+    const t =
+      p.s +
+      p.m;
+
+    return t > 0
+      ? xy(
+          p.s / t,
+          p.c / t,
+          (p.m - p.c) / t
+        )
+      : null;
   }
-  const yearOf = v => { if (v == null || v <= 0) return null; const t = String(Math.trunc(v)); return t.length >= 4 ? +t.slice(0, 4) : null; };
-  const isNum = v => typeof v === "number" && isFinite(v) && v >= 0;
-  const fmt = n => n.toLocaleString();
-  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+
+  const yearOf = v => {
+
+    if (
+      v == null ||
+      v <= 0
+    ) {
+      return null;
+    }
+
+    const t =
+      String(Math.trunc(v));
+
+    return t.length >= 4
+      ? +t.slice(0, 4)
+      : null;
+  };
+
+
+  const isNum = v =>
+    typeof v === "number" &&
+    Number.isFinite(v) &&
+    v >= 0;
+
+
+  const fmt = n =>
+    n.toLocaleString();
+
+
+  const esc = s =>
+    String(s).replace(
+      /[&<>"]/g,
+      c => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;"
+      }[c])
+    );
+
 
   /* ================= drawing ================= */
-  const svg = document.getElementById("tern");
-  const infoEl = document.getElementById("info");
-  const countEl = document.getElementById("count");
+
+  const svg =
+    document.getElementById("tern");
+
+  const infoEl =
+    document.getElementById("info");
+
+  const countEl =
+    document.getElementById("count");
+
 
   function drawFrame(d) {
+
     svg.innerHTML = "";
+
     const c = colors();
-    d.regions.forEach(([code, a1, a2, r1, r2]) => {
-      const poly = el("polygon", { points: [onRay(a1, r1), onRay(a1, r2), onRay(a2, r2), onRay(a2, r1)].map(f2).join(" "), class: "region", fill: c[code] || "#9aa3a6" }, svg);
-      el("title", {}, poly, `${NAMES[code] || code} (${code})`);
-    });
-    d.hlines.forEach(([a, lab]) => {
-      const p = xy(a, 1 - a, 0), q = xy(a, 0, 1 - a);
-      el("line", { x1: p[0], y1: p[1], x2: q[0], y2: q[1], class: "bnd" }, svg);
-      el("text", { x: p[0] - 8, y: p[1] + 4, class: "tick", "text-anchor": "end" }, svg, lab);
-    });
-    d.rays.forEach(([r, amax, lab]) => {
-      const b = xy(0, 1 - r, r), e = onRay(amax, r);
-      el("line", { x1: b[0], y1: b[1], x2: e[0], y2: e[1], class: "bnd" }, svg);
-      el("text", { x: b[0], y: b[1] + 16, class: "tick", "text-anchor": "middle" }, svg, lab);
-    });
-    el("polygon", { points: [T, BL, BR].map(f2).join(" "), class: "edge" }, svg);
-    el("text", { x: T[0], y: T[1] - 12, class: "corner", "text-anchor": "middle" }, svg, d.corners[0]);
-    el("text", { x: BL[0], y: BL[1] + 34, class: "corner", "text-anchor": "middle" }, svg, d.corners[1]);
-    el("text", { x: BR[0], y: BR[1] + 34, class: "corner", "text-anchor": "middle" }, svg, d.corners[2]);
-    d.labels.forEach(([code, a, r, small]) => { const p = onRay(a, r); el("text", { x: p[0], y: p[1], class: "cls" + (small ? " sm" : "") }, svg, code); });
-    d.base.forEach(([code, r]) => { const b = xy(0, 1 - r, r); el("text", { x: b[0], y: b[1] + 36, class: "cls sm" }, svg, code); });
-    return el("g", {}, svg);
+
+    d.regions.forEach(
+      ([code, a1, a2, r1, r2]) => {
+
+        const poly = el(
+          "polygon",
+          {
+            points: [
+              onRay(a1, r1),
+              onRay(a1, r2),
+              onRay(a2, r2),
+              onRay(a2, r1)
+            ].map(f2).join(" "),
+            class: "region",
+            fill: c[code] || "#9aa3a6"
+          },
+          svg
+        );
+
+        el(
+          "title",
+          {},
+          poly,
+          `${NAMES[code] || code} (${code})`
+        );
+      }
+    );
+
+
+    d.hlines.forEach(
+      ([a, lab]) => {
+
+        const p = xy(a, 1 - a, 0);
+        const q = xy(a, 0, 1 - a);
+
+        el(
+          "line",
+          {
+            x1: p[0],
+            y1: p[1],
+            x2: q[0],
+            y2: q[1],
+            class: "bnd"
+          },
+          svg
+        );
+
+        el(
+          "text",
+          {
+            x: p[0] - 8,
+            y: p[1] + 4,
+            class: "tick",
+            "text-anchor": "end"
+          },
+          svg,
+          lab
+        );
+      }
+    );
+
+
+    d.rays.forEach(
+      ([r, amax, lab]) => {
+
+        const b = xy(0, 1 - r, r);
+        const e = onRay(amax, r);
+
+        el(
+          "line",
+          {
+            x1: b[0],
+            y1: b[1],
+            x2: e[0],
+            y2: e[1],
+            class: "bnd"
+          },
+          svg
+        );
+
+        el(
+          "text",
+          {
+            x: b[0],
+            y: b[1] + 16,
+            class: "tick",
+            "text-anchor": "middle"
+          },
+          svg,
+          lab
+        );
+      }
+    );
+
+
+    el(
+      "polygon",
+      {
+        points: [T, BL, BR]
+          .map(f2)
+          .join(" "),
+        class: "edge"
+      },
+      svg
+    );
+
+
+    el(
+      "text",
+      {
+        x: T[0],
+        y: T[1] - 12,
+        class: "corner",
+        "text-anchor": "middle"
+      },
+      svg,
+      d.corners[0]
+    );
+
+
+    el(
+      "text",
+      {
+        x: BL[0],
+        y: BL[1] + 34,
+        class: "corner",
+        "text-anchor": "middle"
+      },
+      svg,
+      d.corners[1]
+    );
+
+
+    el(
+      "text",
+      {
+        x: BR[0],
+        y: BR[1] + 34,
+        class: "corner",
+        "text-anchor": "middle"
+      },
+      svg,
+      d.corners[2]
+    );
+
+
+    d.labels.forEach(
+      ([code, a, r, small]) => {
+
+        const p =
+          onRay(a, r);
+
+        el(
+          "text",
+          {
+            x: p[0],
+            y: p[1],
+            class:
+              "cls" +
+              (small ? " sm" : "")
+          },
+          svg,
+          code
+        );
+      }
+    );
+
+
+    d.base.forEach(
+      ([code, r]) => {
+
+        const b =
+          xy(0, 1 - r, r);
+
+        el(
+          "text",
+          {
+            x: b[0],
+            y: b[1] + 36,
+            class: "cls sm"
+          },
+          svg,
+          code
+        );
+      }
+    );
+
+    return el(
+      "g",
+      {},
+      svg
+    );
   }
+
 
   function describe(p, n) {
-    const src = SRC[(p.dt || "")[8]];
-    return `<b>${esc(p.name || "Sample " + p.oid)}</b><br>` +
-      `Folk code ${esc(p.code || "none")}${NAMES[p.code] ? " – " + esc(NAMES[p.code]) : ""}${src ? " (" + src + ")" : ""}<br>` +
-      `Collected ${yearOf(p.date) || "(undated)"}${isNum(p.depth) ? `, water depth ${p.depth} m` : ""}<br>` +
-      `Gravel ${p.g}%, sand ${p.s}%, mud ${p.m}%${p.c != null ? `, clay ${p.c}%, silt ${Math.max(0, p.m - p.c)}%` : ""}<br>` +
-      (p.why ? `<b>Class from the percentages: ${esc(p.exp)}.</b> ${esc(p.why)}` : "Matches the class from its percentages.") +
-      (n > 1 ? `<br><i>${fmt(n)} samples share these exact values.</i>` : "");
+
+    const src =
+      SRC[(p.dt || "")[8]];
+
+    return (
+      `<b>${esc(p.name || "Sample " + p.oid)}</b><br>` +
+
+      `Folk code ${esc(p.code || "none")}` +
+
+      (
+        NAMES[p.code]
+          ? " – " + esc(NAMES[p.code])
+          : ""
+      ) +
+
+      (
+        src
+          ? " (" + src + ")"
+          : ""
+      ) +
+
+      "<br>" +
+
+      `Collected ${yearOf(p.date) || "(undated)"}` +
+
+      (
+        isNum(p.depth)
+          ? `, water depth ${p.depth} m`
+          : ""
+      ) +
+
+      "<br>" +
+
+      `Gravel ${p.g}%, sand ${p.s}%, mud ${p.m}%` +
+
+      (
+        p.c != null
+          ? `, clay ${p.c}%, silt ${Math.max(0, p.m - p.c)}%`
+          : ""
+      ) +
+
+      "<br>" +
+
+      (
+        p.why
+          ? `<b>Class from the percentages: ${esc(p.exp)}.</b> ${esc(p.why)}`
+          : "Matches the class from its percentages."
+      ) +
+
+      (
+        n > 1
+          ? `<br><i>${fmt(n)} samples share these exact values.</i>`
+          : ""
+      )
+    );
   }
+
 
   function draw() {
+
     const c = colors();
-    const g = drawFrame(mode === "gsm" ? GSM : SSC);
-    const colorBy = colorByParam;
-    const onlyBad = document.getElementById("onlyBad").checked;
-    const groups = new Map();
-    let plotted = 0;
+
+    const g =
+      drawFrame(
+        mode === "gsm"
+          ? GSM
+          : SSC
+      );
+
+    const colorBy =
+      colorByParam;
+
+    const onlyBad =
+      document
+        .getElementById("onlyBad")
+        .checked;
+
+    const groups =
+      new Map();
+
     samples.forEach(p => {
-      if (onlyBad && !p.why) return;
-      const pos = position(p); if (!pos) return;
-      plotted++;
-      const key = colorBy === "computed" ? p.exp : p.code;
-      const k = `${pos[0].toFixed(1)},${pos[1].toFixed(1)},${key}`;
-      if (!groups.has(k)) groups.set(k, { pos, key, list: [] });
-      groups.get(k).list.push(p);
+
+      if (
+        onlyBad &&
+        !p.why
+      ) {
+        return;
+      }
+
+      const pos =
+        position(p);
+
+      if (!pos) {
+        return;
+      }
+
+      const key =
+        colorBy === "computed"
+          ? p.exp
+          : p.code;
+
+      const k =
+        `${pos[0].toFixed(1)},${pos[1].toFixed(1)},${key}`;
+
+      if (!groups.has(k)) {
+
+        groups.set(
+          k,
+          {
+            pos: pos,
+            key: key,
+            list: []
+          }
+        );
+      }
+
+      groups
+        .get(k)
+        .list
+        .push(p);
     });
+
+
     let selCircle = null;
-    [...groups.values()].sort((a, b) => b.list.length - a.list.length).forEach(gr => {
-      const n = gr.list.length, isSel = gr.list.some(q => q.oid === selected);
-      const circle = el("circle", {
-        cx: gr.pos[0].toFixed(2), cy: gr.pos[1].toFixed(2),
-        r: (Math.min(15, 3.6 + 1.4 * Math.sqrt(n - 1)) + (isSel ? 2.5 : 0)).toFixed(2),
-        fill: c[gr.key] || "#9aa3a6", class: "pt" + (isSel ? " sel" : ""), tabindex: 0
-      }, g);
-      const show = () => { infoEl.innerHTML = describe(gr.list[0], n); };
-      circle.addEventListener("mouseenter", show);
-      circle.addEventListener("focus", show);
-      circle.addEventListener("click", () => { selected = gr.list[0].oid; show(); draw(); });
-      if (isSel) selCircle = circle;
-    });
-    if (selCircle) g.appendChild(selCircle);
 
-    if (loading) return;
-    countEl.textContent = samples.length ? "" : "No samples with grain-size values in this extent.";
 
+    [...groups.values()]
+      .sort(
+        (a, b) =>
+          b.list.length -
+          a.list.length
+      )
+      .forEach(gr => {
+
+        const n =
+          gr.list.length;
+
+        const isSel =
+          gr.list.some(
+            q =>
+              q.oid === selected
+          );
+
+        const circle = el(
+          "circle",
+          {
+            cx: gr.pos[0].toFixed(2),
+            cy: gr.pos[1].toFixed(2),
+
+            r: (
+              Math.min(
+                15,
+                3.6 +
+                1.4 *
+                Math.sqrt(n - 1)
+              ) +
+              (isSel ? 2.5 : 0)
+            ).toFixed(2),
+
+            fill:
+              c[gr.key] ||
+              "#9aa3a6",
+
+            class:
+              "pt" +
+              (isSel ? " sel" : ""),
+
+            tabindex: 0
+          },
+          g
+        );
+
+
+        const show = () => {
+
+          infoEl.innerHTML =
+            describe(
+              gr.list[0],
+              n
+            );
+        };
+
+
+        circle.addEventListener(
+          "mouseenter",
+          show
+        );
+
+        circle.addEventListener(
+          "focus",
+          show
+        );
+
+        circle.addEventListener(
+          "click",
+          () => {
+
+            selected =
+              gr.list[0].oid;
+
+            show();
+
+            draw();
+          }
+        );
+
+
+        if (isSel) {
+          selCircle = circle;
+        }
+      });
+
+
+    if (selCircle) {
+      g.appendChild(selCircle);
+    }
+
+
+    if (loading) {
+      return;
+    }
+
+
+    countEl.textContent =
+      samples.length
+        ? `${fmt(samples.length)} samples`
+        : "No samples with grain-size values in this extent.";
   }
 
-  /* ================= query the public usSEABED layer ================= */
+
+  /* ================= query usSEABED ================= */
+
   function queryUrl(extra) {
-    const q = new URLSearchParams(Object.assign({
-      where: "1=1",
-      geometry: [ext.xmin, ext.ymin, ext.xmax, ext.ymax].map(v => +v.toFixed(8)).join(","),
-      geometryType: "esriGeometryEnvelope", inSR: String(ext.wkid), spatialRel: "esriSpatialRelIntersects",
-      f: "json"
-    }, extra));
-    return `${LAYER_URL}/query?${q}`;
+
+    if (!ext) {
+      return null;
+    }
+
+    const q =
+      new URLSearchParams(
+        Object.assign(
+          {
+            where: "1=1",
+
+            geometry: [
+              ext.xmin,
+              ext.ymin,
+              ext.xmax,
+              ext.ymax
+            ]
+              .map(
+                v =>
+                  +v.toFixed(8)
+              )
+              .join(","),
+
+            geometryType:
+              "esriGeometryEnvelope",
+
+            inSR:
+              String(ext.wkid),
+
+            spatialRel:
+              "esriSpatialRelIntersects",
+
+            f:
+              "json"
+          },
+
+          extra
+        )
+      );
+
+    return (
+      `${LAYER_URL}/query?${q}`
+    );
   }
+
+
   async function getJson(url) {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const j = await r.json();
-    if (j.error) throw new Error(j.error.message || "query error");
+
+    const r =
+      await fetch(url);
+
+    if (!r.ok) {
+      throw new Error(
+        `HTTP ${r.status}`
+      );
+    }
+
+    const j =
+      await r.json();
+
+    if (j.error) {
+
+      throw new Error(
+        j.error.message ||
+        "query error"
+      );
+    }
+
     return j;
   }
+
+
   async function load() {
-    try {
-      const cnt = await getJson(queryUrl({ returnCountOnly: "true" }));
-      total = cnt.count || 0;
-      const rows = [];
-      for (let off = 0; off < Math.min(total, MAX_FETCH); off += PAGE) {
-        countEl.textContent = "Loading samples…";
-        const j = await getJson(queryUrl({ outFields: FIELDS, returnGeometry: "false", orderByFields: "OBJECTID",
-          resultOffset: String(off), resultRecordCount: String(PAGE) }));
-        j.features.forEach(f => rows.push(f.attributes));
-        if (!j.exceededTransferLimit && j.features.length < PAGE) break;
-      }
-      samples = []; missing = 0;
-      rows.forEach(a => {
-        if (isNum(a.Gravel) && isNum(a.Sand) && isNum(a.Mud) && (a.Gravel + a.Sand + a.Mud) > 0) {
-          const p = { oid: a.OBJECTID, name: a.LocnName, code: a.FolkCde, g: a.Gravel, s: a.Sand, m: a.Mud,
-            c: isNum(a.Clay) ? a.Clay : null, dt: a.DataTypes, date: a.ObsvnDate, depth: a.WaterDepth };
-          p.exp = classify(p.g, p.s, p.m); p.why = whyDifferent(p);
-          samples.push(p);
-        } else missing++;
-      });
+
+    if (!ext) {
+
       loading = false;
-      draw();
-    } catch (e) {
-      loading = false;
+
       countEl.classList.add("err");
-      countEl.textContent = "The samples could not be loaded. Check the internet connection and the extent in the URL.";
-      drawFrame(mode === "gsm" ? GSM : SSC);
+
+      countEl.textContent =
+        "Unable to plot: no valid extent was provided.";
+
+      drawFrame(
+        mode === "gsm"
+          ? GSM
+          : SSC
+      );
+
+      return;
+    }
+
+
+    try {
+
+      countEl.classList.remove("err");
+
+      countEl.textContent =
+        "Loading samples…";
+
+
+      const cnt =
+        await getJson(
+          queryUrl({
+            returnCountOnly: "true"
+          })
+        );
+
+
+      total =
+        cnt.count || 0;
+
+
+      const rows = [];
+
+
+      for (
+        let off = 0;
+        off < Math.min(total, MAX_FETCH);
+        off += PAGE
+      ) {
+
+        countEl.textContent =
+          "Loading samples…";
+
+
+        const j =
+          await getJson(
+            queryUrl({
+              outFields: FIELDS,
+
+              returnGeometry:
+                "false",
+
+              orderByFields:
+                "OBJECTID",
+
+              resultOffset:
+                String(off),
+
+              resultRecordCount:
+                String(PAGE)
+            })
+          );
+
+
+        j.features.forEach(
+          f =>
+            rows.push(
+              f.attributes
+            )
+        );
+
+
+        if (
+          !j.exceededTransferLimit &&
+          j.features.length < PAGE
+        ) {
+          break;
+        }
+      }
+
+
+      samples = [];
+      missing = 0;
+
+
+      rows.forEach(a => {
+
+        if (
+          isNum(a.Gravel) &&
+          isNum(a.Sand) &&
+          isNum(a.Mud) &&
+          (
+            a.Gravel +
+            a.Sand +
+            a.Mud
+          ) > 0
+        ) {
+
+          const p = {
+
+            oid:
+              a.OBJECTID,
+
+            name:
+              a.LocnName,
+
+            code:
+              a.FolkCde,
+
+            g:
+              a.Gravel,
+
+            s:
+              a.Sand,
+
+            m:
+              a.Mud,
+
+            c:
+              isNum(a.Clay)
+                ? a.Clay
+                : null,
+
+            dt:
+              a.DataTypes,
+
+            date:
+              a.ObsvnDate,
+
+            depth:
+              a.WaterDepth
+          };
+
+
+          p.exp =
+            classify(
+              p.g,
+              p.s,
+              p.m
+            );
+
+
+          p.why =
+            whyDifferent(p);
+
+
+          samples.push(p);
+
+        } else {
+
+          missing++;
+        }
+      });
+
+
+      loading = false;
+
+      draw();
+
+    } catch (e) {
+
+      console.error(e);
+
+      loading = false;
+
+      countEl.classList.add("err");
+
+      countEl.textContent =
+        "The samples could not be loaded. Check the internet connection and the extent in the URL.";
+
+      drawFrame(
+        mode === "gsm"
+          ? GSM
+          : SSC
+      );
     }
   }
 
+
   /* ================= controls ================= */
+
   function setMode(m) {
+
     mode = m;
-    document.getElementById("tGSM").classList.toggle("on", m === "gsm");
-    document.getElementById("tSSC").classList.toggle("on", m === "ssc");
+
+    document
+      .getElementById("tGSM")
+      .classList
+      .toggle(
+        "on",
+        m === "gsm"
+      );
+
+    document
+      .getElementById("tSSC")
+      .classList
+      .toggle(
+        "on",
+        m === "ssc"
+      );
+
     draw();
   }
-  document.getElementById("tGSM").addEventListener("click", () => setMode("gsm"));
-  document.getElementById("tSSC").addEventListener("click", () => setMode("ssc"));
-  document.getElementById("onlyBad").addEventListener("change", draw);
-  window.addEventListener("hashchange", () => location.reload());
+
+
+  document
+    .getElementById("tGSM")
+    .addEventListener(
+      "click",
+      () =>
+        setMode("gsm")
+    );
+
+
+  document
+    .getElementById("tSSC")
+    .addEventListener(
+      "click",
+      () =>
+        setMode("ssc")
+    );
+
+
+  document
+    .getElementById("onlyBad")
+    .addEventListener(
+      "change",
+      draw
+    );
+
+
+  /* ================= initialize ================= */
 
   setMode(mode);
-  if (ext) load();
-  else {
+
+  if (ext) {
+
+    load();
+
+  } else {
+
     loading = false;
+
     countEl.classList.add("err");
-    countEl.textContent = "Unable to plot: no valid extent was provided.";
+
+    countEl.textContent =
+      "Unable to plot: no valid extent was provided.";
+
+    drawFrame(
+      mode === "gsm"
+        ? GSM
+        : SSC
+    );
   }
+
 })();
 </script>
 
