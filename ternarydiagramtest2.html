@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>External Host Trigger</title>
+</head>
+<body>
+    <div id="output">Waiting for map movement...</div>
+
+    <script>
+        // Function to read the live coordinates from the URL
+        function checkExtent() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const bbox = urlParams.get('bbox'); // Reads the ?bbox= parameter
+            
+            if (bbox) {
+                document.getElementById('output').innerText = `Current Extent: ${bbox}`;
+                
+                // --- TRIGGER YOUR CUSTOM LOGIC HERE ---
+                // Example: fetchNewData(bbox);
+                console.log("Map shifted! New bounding box:", bbox);
+            }
+        }
+
+        // Run on load to capture the initial map state
+        window.onload = checkExtent;
+    </script>
+</body>
+</html>
